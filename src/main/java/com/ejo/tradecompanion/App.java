@@ -3,6 +3,7 @@ package com.ejo.tradecompanion;
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowui.Window;
 import com.ejo.tradecompanion.scenes.TitleScene;
+import com.ejo.tradecompanion.scenes.UpDownScene;
 
 public class App {
 
@@ -11,11 +12,11 @@ public class App {
     // Import StockDownloader as a dependency
     // Have practice mode where you can mark the start of the trade and watch if it goes up or down
 
-    private static Window window = new Window(
+    private static final Window window = new Window(
             "Trade Companion",
             new Vector(100,100),
             new Vector(1200,800),
-            new TitleScene(),
+            new UpDownScene(),
             true, 4, 60, 60
     );
 
