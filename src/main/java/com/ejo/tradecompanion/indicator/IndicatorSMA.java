@@ -12,6 +12,8 @@ public class IndicatorSMA extends Indicator {
 
     private final int period;
 
+    private DateTime currentCalculationDate;
+
     public IndicatorSMA(Stock stock, boolean loadOnInstantiation, int period) {
         super(stock, loadOnInstantiation);
         this.period = period;
@@ -31,7 +33,7 @@ public class IndicatorSMA extends Indicator {
      * @param dateTime
      */
     @Override
-    public void calculateData(DateTime dateTime) {
+    public float[] calculateData(DateTime dateTime) {
         //SMA CALCULATION
         ArrayList<Float> openAvgList = new ArrayList<>();
         ArrayList<Float> closeAvgList = new ArrayList<>();
@@ -47,31 +49,31 @@ public class IndicatorSMA extends Indicator {
                 continue;
             }
 
-            try {
-                openAvgList.add(getStock().getOpen(nextDate));
-                closeAvgList.add(getStock().getClose(nextDate));
-            } catch (NullPointerException e) { //Value is null
-            }
+            float open = getStock().getOpen(nextDate);
+            float close = getStock().getClose(nextDate);
+            if (open != -1) openAvgList.add(open);
+            if (close != -1) closeAvgList.add(close);
 
             candleCount++;
             loopCount++;
         }
 
-        double openAvg = MathE.roundDouble(calculateAverage(openAvgList),4);
-        double closeAvg = MathE.roundDouble(calculateAverage(closeAvgList),4);
-        long key = dateTime.getDateTimeID();
-        //System.out.println(new DateTime(key).getFormattedDateTime()); //TODO: Replace this with a progress bar container
-        getHistoricalData().put(key, new String[]{String.valueOf(openAvg), String.valueOf(closeAvg)});
+        float openAvg = (float) MathE.roundDouble(calculateAverage(openAvgList),4);
+        float closeAvg = (float) MathE.roundDouble(calculateAverage(closeAvgList),4);
+        getHistoricalData().put(dateTime.getDateTimeID(), new String[]{String.valueOf(openAvg) ,String.valueOf(closeAvg)});
+        this.currentCalculationDate = dateTime;
+
+        return new float[]{openAvg,closeAvg};
     }
 
     @Override
-    public HashMap<Long, String[]> loadHistoricalData() {
-        return loadHistoricalData("stock_data/indicator_data",  "SMA" + getPeriod() + "-" + getStock().getTicker() + "_" + getStock().getTimeFrame() + (getStock().isExtendedHours() ? "-EH" : ""));
+    public String getDefaultFileName() {
+        return "SMA" + getPeriod() + "-" + getStock().getTicker() + "_" + getStock().getTimeFrame() + (getStock().isExtendedHours() ? "-EH" : "");
     }
 
-    @Override
-    public boolean saveHistoricalData() {
-        return this.saveHistoricalData("stock_data/indicator_data","SMA" + getPeriod() + "-" + getStock().getTicker() + "_" + getStock().getTimeFrame() + (getStock().isExtendedHours() ? "-EH" : ""));
+
+    public DateTime getCurrentCalculationDate() {
+        return currentCalculationDate;
     }
 
     public static <T extends Number> double calculateAverage(ArrayList<T> values) {

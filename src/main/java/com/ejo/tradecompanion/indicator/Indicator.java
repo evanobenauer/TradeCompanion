@@ -11,6 +11,9 @@ import java.util.HashMap;
 
 public abstract class Indicator {
 
+    //File Path
+    protected static final String MAIN_PATH = "stock_data/indicator_data";
+
     //Stock
     private final Stock stock;
 
@@ -26,13 +29,14 @@ public abstract class Indicator {
     private final Container<Double> calculationPercent = new Container<>(0d);
     protected boolean calculationActive = false;
 
+
     public Indicator(Stock stock, boolean loadOnInstantiation) {
         this.stock = stock;
         if (loadOnInstantiation) loadHistoricalData();
     }
 
     public Indicator(Stock stock) {
-        this(stock,true);
+        this(stock, true);
     }
 
     /**
@@ -42,6 +46,7 @@ public abstract class Indicator {
 
     /**
      * Scrapes live data every indicated delay
+     *
      * @param liveDelayS
      */
     public void updateScrapeData(double liveDelayS) {
@@ -55,11 +60,12 @@ public abstract class Indicator {
     /**
      * Calculates all indicator data depending on the stock values/historical values
      */
-    public abstract void calculateData(DateTime candleTime);
+    public abstract float[] calculateData(DateTime candleTime);
 
 
     /**
      * Calculates indicator data from a range of stock candle dates. The data will be reflective of whether the stock is using extended hours or not
+     *
      * @param startCandleTime
      * @param endCandleTime
      */
@@ -77,14 +83,14 @@ public abstract class Indicator {
 
         int loopCount = 0;
         while (currentDateTime.getDateTimeID() < endCandleTime.getDateTimeID()) {
-            currentDateTime = new DateTime(startCandleTime.getYearInt(),startCandleTime.getMonthInt(),startCandleTime.getDayInt(),startCandleTime.getHourInt(),startCandleTime.getMinuteInt(),startCandleTime.getSecondInt() + loopCount * getStock().getTimeFrame().getSeconds());
+            currentDateTime = new DateTime(startCandleTime.getYearInt(), startCandleTime.getMonthInt(), startCandleTime.getDayInt(), startCandleTime.getHourInt(), startCandleTime.getMinuteInt(), startCandleTime.getSecondInt() + loopCount * getStock().getTimeFrame().getSeconds());
 
-            if (!StockUtil.isPriceActive(getStock().isExtendedHours(),currentDateTime)) {
+            if (!StockUtil.isPriceActive(getStock().isExtendedHours(), currentDateTime)) {
                 loopCount++;
                 continue;
             }
 
-            getCalculationPercent().set(0d); //TODO: set the calculation percent properly
+            getCalculationPercent().set(getDateTimePercent(startCandleTime,currentDateTime,endCandleTime));
 
             calculateData(currentDateTime);
             loopCount++;
@@ -98,12 +104,13 @@ public abstract class Indicator {
      * Calculates indicator data from all available stock data dates. The data will be reflective of whether the stock is using extended hours or not
      */
     public void calculateData() {
-        calculateData(new DateTime(2000,1,3),StockUtil.getAdjustedCurrentTime());
+        calculateData(new DateTime(2000, 1, 3), StockUtil.getAdjustedCurrentTime());
     }
 
 
     /**
      * Loads all historical indicator data from the specified file as a hashmap with datetimeID as the key
+     *
      * @param filePath
      * @param fileName
      * @return
@@ -129,13 +136,17 @@ public abstract class Indicator {
 
     /**
      * Have this specify the default path when overridden like in the Stock class
+     *
      * @return
      */
-    public abstract HashMap<Long, String[]> loadHistoricalData();
+    public HashMap<Long, String[]> loadHistoricalData() {
+        return loadHistoricalData(MAIN_PATH, getDefaultFileName());
+    }
 
 
     /**
      * Saves all historical data to a specified path with the key as the datetimeID in the first column
+     *
      * @param filePath
      * @param fileName
      * @return
@@ -146,10 +157,15 @@ public abstract class Indicator {
 
     /**
      * Have this specify the default path when overridden like in the Stock class
+     *
      * @return
      */
-    public abstract boolean saveHistoricalData();
+    public boolean saveHistoricalData() {
+        return saveHistoricalData(MAIN_PATH, getDefaultFileName());
+    }
 
+
+    public abstract String getDefaultFileName();
 
     public float getOpenValue() {
         return open;
@@ -158,7 +174,8 @@ public abstract class Indicator {
     public float getOpenValue(DateTime dateTime) {
         try {
             if (dateTime == null || dateTime.equals(getStock().getOpenTime())) {
-                return getOpenValue();
+                //return getOpenValue();
+                return calculateData(getStock().getOpenTime())[0];
             } else {
                 return Float.parseFloat(getHistoricalData().get(dateTime.getDateTimeID())[0]);
             }
@@ -174,7 +191,8 @@ public abstract class Indicator {
     public float getCloseValue(DateTime dateTime) {
         try {
             if (dateTime == null || dateTime.equals(getStock().getOpenTime())) {
-                return getCloseValue();
+                //return getCloseValue();
+                return calculateData(getStock().getOpenTime())[1];
             } else {
                 return Float.parseFloat(getHistoricalData().get(dateTime.getDateTimeID())[1]);
             }
@@ -200,6 +218,26 @@ public abstract class Indicator {
         return stock;
     }
 
+
+    private static double getDateTimePercent(DateTime start, DateTime current, DateTime end) {
+        double year = current.getYearInt();
+        double yearDiff = end.getYearInt() - start.getYearInt();
+        double yearRange = 1 + yearDiff;
+
+        double month = current.getMonthInt();
+        double monthDiff = end.getMonthInt() - start.getMonthInt();
+        double monthRange = 1 + (year == end.getYearInt() ? monthDiff : 12);
+
+        double day = current.getDayInt();
+        double dayDiff = end.getDayInt() - start.getDayInt();
+        double dayRange = 1 + (month == end.getMonthInt() ? dayDiff : 31);
+
+        double yearPercent = (year - start.getYearInt()) / yearRange;
+        double monthPercent = (month - start.getMonthInt()) / monthRange / yearRange;
+        double dayPercent = (day - start.getDayInt()) / dayRange / monthRange / yearRange;
+
+        return yearPercent + monthPercent + dayPercent;
+    }
 
     //TODO: make data source options
     enum DataSource {

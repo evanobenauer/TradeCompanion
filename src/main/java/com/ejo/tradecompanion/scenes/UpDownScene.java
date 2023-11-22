@@ -55,6 +55,8 @@ public class UpDownScene extends Scene {
         super.draw();
         QuickDraw.drawTextCentered(String.valueOf(stock.getPrice()), Fonts.getDefaultFont(40), Vector.NULL,getSize(), ColorE.WHITE);
 
+        if (SMA.isCalculationActive() && SMA.getCurrentCalculationDate() != null) QuickDraw.drawText(SMA.getCurrentCalculationDate().getFormattedDateTime(),Fonts.getDefaultFont(20),new Vector(2,50),ColorE.WHITE);
+
         drawCandles(this,stock, stock.getPrice(),300,20,50,new Vector(1,1000));
     }
 
