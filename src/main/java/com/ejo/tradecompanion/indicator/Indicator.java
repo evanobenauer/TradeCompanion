@@ -13,6 +13,7 @@ public abstract class Indicator {
 
     //File Path
     protected static final String MAIN_PATH = "stock_data/indicator_data";
+    protected final String STOCK_LABEL = getStock().getTicker() + "_" + getStock().getTimeFrame().getTag();
 
     //Stock
     private final Stock stock;
@@ -167,14 +168,14 @@ public abstract class Indicator {
 
     public abstract String getDefaultFileName();
 
-    public float getOpenValue() {
+    public float getLiveOpenValue() {
         return open;
     }
 
     public float getOpenValue(DateTime dateTime) {
         try {
             if (dateTime == null || dateTime.equals(getStock().getOpenTime())) {
-                //return getOpenValue();
+                //return getLiveOpenValue();
                 return calculateData(getStock().getOpenTime())[0];
             } else {
                 return Float.parseFloat(getHistoricalData().get(dateTime.getDateTimeID())[0]);
@@ -184,14 +185,14 @@ public abstract class Indicator {
         }
     }
 
-    public float getCloseValue() {
+    public float getLiveCloseValue() {
         return close;
     }
 
     public float getCloseValue(DateTime dateTime) {
         try {
             if (dateTime == null || dateTime.equals(getStock().getOpenTime())) {
-                //return getCloseValue();
+                //return getLiveCloseValue();
                 return calculateData(getStock().getOpenTime())[1];
             } else {
                 return Float.parseFloat(getHistoricalData().get(dateTime.getDateTimeID())[1]);
