@@ -27,7 +27,7 @@ public class UpDownScene extends Scene {
 
     public UpDownScene() {
         super("UpDown Scene");
-        stock.loadHistoricalData("stock_data","SPY_1min-01-2000-02-2017");
+        stock.loadHistoricalData("stock_data","SPY_1min.csv");
         SMA.loadHistoricalData();
         Thread stockUpdateThread = new Thread(() -> {
             while (true) {
@@ -75,7 +75,7 @@ public class UpDownScene extends Scene {
             SMA.saveHistoricalData();
         }
         if (key == Key.KEY_C.getId()) {
-            Thread thread = new Thread(() -> SMA.calculateData(new DateTime(2016, 1, 3, 4, 0), new DateTime(2016, 10, 7, 19, 59)));
+            Thread thread = new Thread(() -> SMA.calculateData(new DateTime(2000, 1, 3, 4, 0), new DateTime(2023, 10, 31, 19, 59)));
             thread.setDaemon(true);
             thread.start();
         }
@@ -90,12 +90,15 @@ public class UpDownScene extends Scene {
         candleList.add(liveCandle);
 
         //Create Historical Candles
-        DateTime ot = stock.getOpenTime();
-        int candleAmount = (int) (getSize().getX() / 18) + 1;
-        for (int i = 1; i < candleAmount; i++) {
-            DateTime candleTime = new DateTime(ot.getYearInt(), ot.getMonthInt(), ot.getDayInt(), ot.getHourInt(), ot.getMinuteInt(), ot.getSecondInt() - stock.getTimeFrame().getSeconds() * i);
-            CandleUI historicalCandle = new CandleUI(stock, candleTime, liveCandle.getPos().getX() - (separation + candleWidth) * i, focusY, focusPrice, candleWidth, candleScale);
-            candleList.add(historicalCandle);
+        try {
+            DateTime ot = stock.getOpenTime();
+            int candleAmount = (int) (getSize().getX() / 18) + 1;
+            for (int i = 1; i < candleAmount; i++) {
+                DateTime candleTime = new DateTime(ot.getYearInt(), ot.getMonthInt(), ot.getDayInt(), ot.getHourInt(), ot.getMinuteInt(), ot.getSecondInt() - stock.getTimeFrame().getSeconds() * i);
+                CandleUI historicalCandle = new CandleUI(stock, candleTime, liveCandle.getPos().getX() - (separation + candleWidth) * i, focusY, focusPrice, candleWidth, candleScale);
+                candleList.add(historicalCandle);
+            }
+        } catch (NullPointerException e) {
         }
 
         //Draw Candles

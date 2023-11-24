@@ -13,7 +13,6 @@ public abstract class Indicator {
 
     //File Path
     protected static final String MAIN_PATH = "stock_data/indicator_data";
-    protected final String STOCK_LABEL = getStock().getTicker() + "_" + getStock().getTimeFrame().getTag();
 
     //Stock
     private final Stock stock;
@@ -238,6 +237,10 @@ public abstract class Indicator {
         double dayPercent = (day - start.getDayInt()) / dayRange / monthRange / yearRange;
 
         return yearPercent + monthPercent + dayPercent;
+    }
+
+    protected String getStockLabel() {
+        return getStock().getTicker() + "_" + getStock().getTimeFrame().getTag();
     }
 
     //TODO: make data source options

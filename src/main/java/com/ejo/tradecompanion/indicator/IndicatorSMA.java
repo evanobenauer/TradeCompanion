@@ -68,7 +68,7 @@ public class IndicatorSMA extends Indicator {
 
     @Override
     public String getDefaultFileName() {
-        return "SMA" + getPeriod() + "-" + STOCK_LABEL + (getStock().isExtendedHours() ? "-EH" : "");
+        return "SMA" + getPeriod() + "-" + getStockLabel() + (getStock().isExtendedHours() ? "-EH" : "");
     }
 
 

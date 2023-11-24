@@ -30,7 +30,7 @@ public class IndicatorEMA extends Indicator {
 
     @Override
     public String getDefaultFileName() {
-        return "EMA" + getPeriod() + "-" + STOCK_LABEL + (getStock().isExtendedHours() ? "-EH" : "");
+        return "EMA" + getPeriod() + "-" + getStockLabel() + (getStock().isExtendedHours() ? "-EH" : "");
     }
 
     public DateTime getCurrentCalculationDate() {
