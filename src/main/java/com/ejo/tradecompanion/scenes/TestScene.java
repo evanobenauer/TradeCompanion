@@ -7,28 +7,30 @@ import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowui.scene.Scene;
 import com.ejo.glowui.scene.elements.ProgressBarUI;
 import com.ejo.glowui.scene.elements.shape.LineUI;
+import com.ejo.glowui.util.Key;
+import com.ejo.glowui.util.render.Fonts;
 import com.ejo.glowui.util.render.QuickDraw;
 import com.ejo.stockdownloader.data.Stock;
 import com.ejo.stockdownloader.render.CandleUI;
-import com.ejo.stockdownloader.util.StockUtil;
 import com.ejo.stockdownloader.util.TimeFrame;
 import com.ejo.tradecompanion.indicator.IndicatorSMA;
 
 import java.awt.*;
 import java.util.ArrayList;
 
-public class UpDownScene extends Scene {
-
+public class TestScene extends Scene {
 
     Stock stock = new Stock("SPY", TimeFrame.ONE_MINUTE,true, Stock.PriceSource.MARKETWATCH,false);
 
     IndicatorSMA SMA = new IndicatorSMA(stock,false,50);
 
     ProgressBarUI<Double> progressBar = new ProgressBarUI<>(new Vector(200,200),new Vector(300,50),ColorE.BLUE,stock.getClosePercent(),0,1);
+    ProgressBarUI<Double> progressBar2 = new ProgressBarUI<>(new Vector(0,0),new Vector(300,25),ColorE.BLUE,SMA.getProgressContainer(),0,1);
 
-    public UpDownScene() {
-        super("UpDown Scene");
-        addElements(progressBar);
+    public TestScene() {
+        super("Test Scene");
+        stock.loadHistoricalData("stock_data","SPY_1min.csv");
+        SMA.loadHistoricalData();
         Thread stockUpdateThread = new Thread(() -> {
             while (true) {
                 stock.updateLivePrice(.5);
@@ -42,18 +44,27 @@ public class UpDownScene extends Scene {
         stockUpdateThread.setDaemon(true);
         stockUpdateThread.setName("Stock Update Thread");
         stockUpdateThread.start();
+
+        addElements(progressBar,progressBar2);
     }
+
+    int candleOffset = 0;
+    int candleYOffset = 0;
 
     @Override
     public void draw() {
+        drawBackground(new ColorE(50, 50, 50, 255));
+        QuickDraw.drawRect(progressBar.getPos(),progressBar.getSize(),ColorE.BLACK);
+        QuickDraw.drawRect(progressBar2.getPos(),progressBar2.getSize(),ColorE.BLACK);
         super.draw();
-        double candleWidth = 14;
-        double candleSpace = 4;
-        double focusY = getSize().getY() / 2;
-        double focusPrice = stock.getPrice();
-        Vector candleScale = new Vector(1, 200);
-        drawCandles(stock, StockUtil.getAdjustedCurrentTime(),focusPrice,focusY,candleSpace,candleWidth,candleScale);
+        QuickDraw.drawTextCentered(String.valueOf(stock.getPrice()), Fonts.getDefaultFont(40), Vector.NULL,getSize(), ColorE.WHITE);
+
+        if (SMA.isProgressActive() && SMA.getCurrentCalculationDate() != null) QuickDraw.drawText(SMA.getCurrentCalculationDate().getFormattedDateTime(),Fonts.getDefaultFont(20),new Vector(2,50),ColorE.WHITE);
+
+        //drawCandles(this,stock, stock.getPrice(),300,20,50,new Vector(1,1000));
+        drawCandles(stock,new DateTime(2023,11,22,15,59 + candleOffset),455,500 + candleYOffset,6,20,new Vector(1,500));
     }
+
 
     @Override
     public void tick() {
@@ -61,19 +72,41 @@ public class UpDownScene extends Scene {
         stock.updateLiveData();
     }
 
+    @Override
+    public void onKeyPress(int key, int scancode, int action, int mods) {
+        super.onKeyPress(key, scancode, action, mods);
+        if (key == Key.KEY_LEFT.getId()) candleOffset --;
+        if (key == Key.KEY_RIGHT.getId()) candleOffset ++;
+
+        if (action != Key.ACTION_PRESS) return;
+        if (key == Key.KEY_S.getId()) {
+            //stock.saveHistoricalData();
+            SMA.saveHistoricalData();
+        }
+        if (key == Key.KEY_C.getId()) {
+            Thread thread = new Thread(() -> SMA.calculateData(new DateTime(2023, 10, 3, 4, 0), new DateTime(2023, 11, 24, 19, 59)));
+            thread.setDaemon(true);
+            thread.start();
+        }
+    }
+
+    @Override
+    public void onMouseScroll(int scroll, Vector mousePos) {
+        super.onMouseScroll(scroll, mousePos);
+        candleYOffset += scroll * 10;
+    }
+
     private void drawCandles(Stock stock, DateTime endTime, double focusPrice, double focusY, double separation, double candleWidth, Vector candleScale) {
         //Define Candle List
         ArrayList<CandleUI> listCandle = new ArrayList<>();
         ArrayList<Vector> listSMA50 = new ArrayList<>();
-
-        DateTime ot = endTime.equals(StockUtil.getAdjustedCurrentTime()) ? stock.getOpenTime() : endTime;
 
         //Create Historical Candles
         try {
             int candleAmount = (int) (getSize().getX() / 18) + 1;
             for (int i = 0; i < candleAmount; i++) {
                 double x = getSize().getX() - (separation + candleWidth) * (i + 1);
-                DateTime candleTime = new DateTime(ot.getYearInt(), ot.getMonthInt(), ot.getDayInt(), ot.getHourInt(), ot.getMinuteInt(), ot.getSecondInt() - stock.getTimeFrame().getSeconds() * i);
+                DateTime candleTime = new DateTime(endTime.getYearInt(), endTime.getMonthInt(), endTime.getDayInt(), endTime.getHourInt(), endTime.getMinuteInt(), endTime.getSecondInt() - stock.getTimeFrame().getSeconds() * i);
                 CandleUI historicalCandle = new CandleUI(stock, candleTime, x, focusY, focusPrice, candleWidth, candleScale);
                 listCandle.add(historicalCandle);
                 double emaY = focusY -(SMA.getCloseValue(candleTime) * candleScale.getY()) + focusPrice*candleScale.getY();
@@ -90,13 +123,8 @@ public class UpDownScene extends Scene {
             }
         }
 
-        try {
-            LineUI line = new LineUI(ColorE.BLUE, LineUI.Type.PLAIN, 4d, listSMA50.toArray(new Vector[0]));
-            line.draw();
-        } catch (Exception e) {
-
-        }
-
+        LineUI line = new LineUI(ColorE.BLUE, LineUI.Type.PLAIN,4d,listSMA50.toArray(new Vector[0]));
+        line.draw();
         //Draw Tooltips
         for (CandleUI candle : listCandle) {
             if (candle.getStock().getOpen(candle.getOpenTime()) != -1) {
@@ -143,3 +171,4 @@ public class UpDownScene extends Scene {
 
     }
 }
+

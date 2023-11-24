@@ -34,6 +34,7 @@ public class IndicatorSMA extends Indicator {
      */
     @Override
     public float[] calculateData(DateTime dateTime) {
+        if (!StockUtil.isPriceActive(getStock().isExtendedHours(),dateTime)) return new float[]{-1,-1};
         //SMA CALCULATION
         ArrayList<Float> openAvgList = new ArrayList<>();
         ArrayList<Float> closeAvgList = new ArrayList<>();

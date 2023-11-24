@@ -2,6 +2,7 @@ package com.ejo.tradecompanion;
 
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowui.Window;
+import com.ejo.tradecompanion.scenes.TestScene;
 import com.ejo.tradecompanion.scenes.UpDownScene;
 
 public class App {

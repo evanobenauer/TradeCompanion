@@ -65,7 +65,7 @@ public abstract class Indicator {
     /**
      * Calculates all indicator data depending on the stock values/historical values
      */
-    public abstract float[] calculateData(DateTime candleTime);
+    public abstract float[] calculateData(DateTime candleTime); //TODO: Implement live web scraping
 
 
     /**
@@ -78,11 +78,11 @@ public abstract class Indicator {
         this.progressActive = true;
         getProgressContainer().set(0d);
 
+        if (endCandleTime.getDateTimeID() < startCandleTime.getDateTimeID()) return;
         if (startCandleTime.getDateTimeID() == endCandleTime.getDateTimeID()) {
             calculateData(startCandleTime);
             return;
         }
-        if (endCandleTime.getDateTimeID() < startCandleTime.getDateTimeID()) return;
 
         DateTime currentDateTime = new DateTime(startCandleTime.getDateTimeID());
 
