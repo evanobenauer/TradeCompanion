@@ -7,6 +7,11 @@ import com.ejo.glowlib.time.StopWatch;
 import com.ejo.stockdownloader.data.Stock;
 import com.ejo.stockdownloader.util.StockUtil;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.HashMap;
 
 public abstract class Indicator {
@@ -26,8 +31,8 @@ public abstract class Indicator {
     private float close;
 
     //Calculation Variables
-    private final Container<Double> calculationPercent = new Container<>(0d);
-    protected boolean calculationActive = false;
+    private final Container<Double> progressContainer = new Container<>(0d);
+    protected boolean progressActive = false;
 
 
     public Indicator(Stock stock, boolean loadOnInstantiation) {
@@ -70,8 +75,8 @@ public abstract class Indicator {
      * @param endCandleTime
      */
     public void calculateData(DateTime startCandleTime, DateTime endCandleTime) {
-        this.calculationActive = true;
-        getCalculationPercent().set(0d);
+        this.progressActive = true;
+        getProgressContainer().set(0d);
 
         if (startCandleTime.getDateTimeID() == endCandleTime.getDateTimeID()) {
             calculateData(startCandleTime);
@@ -90,14 +95,14 @@ public abstract class Indicator {
                 continue;
             }
 
-            getCalculationPercent().set(getDateTimePercent(startCandleTime,currentDateTime,endCandleTime));
+            getProgressContainer().set(getDateTimePercent(startCandleTime,currentDateTime,endCandleTime));
 
             calculateData(currentDateTime);
             loopCount++;
         }
 
-        getCalculationPercent().set(1d);
-        this.calculationActive = false;
+        getProgressContainer().set(1d);
+        this.progressActive = false;
     }
 
     /**
@@ -116,22 +121,32 @@ public abstract class Indicator {
      * @return
      */
     public HashMap<Long, String[]> loadHistoricalData(String filePath, String fileName) {
+        this.progressActive = true;
         try {
-            HashMap<String, String[]> rawMap = CSVManager.getHMDataFromCSV(filePath, fileName);
+            File file = new File(filePath + (fileName.equals("") ? "" : "/") + fileName.replace(".csv", "") + ".csv");
+            HashMap<Long, String[]> rawMap = new HashMap<>();
 
-            HashMap<Long, String[]> convertedMap = new HashMap<>();
-            for (String key : rawMap.keySet()) {
-                if (getStock().isExtendedHours()) {
-                    convertedMap.put(Long.parseLong(key), rawMap.get(key));
-                } else if (StockUtil.isTradingHours(new DateTime(Long.parseLong(key)))) {
-                    convertedMap.put(Long.parseLong(key), rawMap.get(key));
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String line;
+                long fileSize = Files.lines(file.toPath()).count();
+                long currentRow = 0;
+                while ((line = reader.readLine()) != null) {
+                    String[] row = line.split(",");
+                    String key = row[0];
+                    String[] rowCut = line.replace(key + ",", "").split(",");
+                    rawMap.put(Long.parseLong(row[0]), rowCut);
+                    currentRow += 1;
+                    getProgressContainer().set((double) (currentRow / fileSize));
                 }
+            } catch (IOException | SecurityException e) {
+                e.printStackTrace();
             }
-            return this.dataHash = convertedMap;
+            return this.dataHash = rawMap;
         } catch (Exception e) {
             e.printStackTrace();
-            return new HashMap<>();
         }
+        this.progressActive = false;
+        return new HashMap<>();
     }
 
     /**
@@ -201,12 +216,12 @@ public abstract class Indicator {
         }
     }
 
-    public Container<Double> getCalculationPercent() {
-        return calculationPercent;
+    public Container<Double> getProgressContainer() {
+        return progressContainer;
     }
 
-    public boolean isCalculationActive() {
-        return calculationActive;
+    public boolean isProgressActive() {
+        return progressActive;
     }
 
 

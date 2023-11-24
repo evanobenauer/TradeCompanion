@@ -2,6 +2,7 @@ package com.ejo.tradecompanion.scenes;
 
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowlib.misc.ColorE;
+import com.ejo.glowlib.setting.Container;
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowui.scene.Scene;
 import com.ejo.glowui.scene.elements.ProgressBarUI;
@@ -23,7 +24,7 @@ public class UpDownScene extends Scene {
     IndicatorSMA SMA = new IndicatorSMA(stock,false,50);
 
     ProgressBarUI<Double> progressBar = new ProgressBarUI<>(new Vector(200,200),new Vector(300,50),ColorE.BLUE,stock.getClosePercent(),0,1);
-    ProgressBarUI<Double> progressBar2 = new ProgressBarUI<>(new Vector(0,0),new Vector(300,25),ColorE.BLUE,SMA.getCalculationPercent(),0,1);
+    ProgressBarUI<Double> progressBar2 = new ProgressBarUI<>(new Vector(0,0),new Vector(300,25),ColorE.BLUE,SMA.getProgressContainer(),0,1);
 
     public UpDownScene() {
         super("UpDown Scene");
@@ -55,7 +56,7 @@ public class UpDownScene extends Scene {
         super.draw();
         QuickDraw.drawTextCentered(String.valueOf(stock.getPrice()), Fonts.getDefaultFont(40), Vector.NULL,getSize(), ColorE.WHITE);
 
-        if (SMA.isCalculationActive() && SMA.getCurrentCalculationDate() != null) QuickDraw.drawText(SMA.getCurrentCalculationDate().getFormattedDateTime(),Fonts.getDefaultFont(20),new Vector(2,50),ColorE.WHITE);
+        if (SMA.isProgressActive() && SMA.getCurrentCalculationDate() != null) QuickDraw.drawText(SMA.getCurrentCalculationDate().getFormattedDateTime(),Fonts.getDefaultFont(20),new Vector(2,50),ColorE.WHITE);
 
         drawCandles(this,stock, stock.getPrice(),300,20,50,new Vector(1,1000));
     }
@@ -75,7 +76,7 @@ public class UpDownScene extends Scene {
             SMA.saveHistoricalData();
         }
         if (key == Key.KEY_C.getId()) {
-            Thread thread = new Thread(() -> SMA.calculateData(new DateTime(2000, 1, 3, 4, 0), new DateTime(2023, 10, 31, 19, 59)));
+            Thread thread = new Thread(() -> SMA.calculateData(new DateTime(2023, 10, 3, 4, 0), new DateTime(2023, 11, 31, 19, 59)));
             thread.setDaemon(true);
             thread.start();
         }

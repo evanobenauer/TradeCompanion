@@ -2,7 +2,6 @@ package com.ejo.tradecompanion;
 
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowui.Window;
-import com.ejo.tradecompanion.scenes.TitleScene;
 import com.ejo.tradecompanion.scenes.UpDownScene;
 
 public class App {
@@ -21,11 +20,7 @@ public class App {
     );
 
     public static void main(String[] args) {
-        getWindow().run();
-        getWindow().close();
-    }
-
-    public static Window getWindow() {
-        return window;
+        window.run();
+        window.close();
     }
 }
