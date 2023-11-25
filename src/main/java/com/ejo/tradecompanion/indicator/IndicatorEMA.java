@@ -5,12 +5,15 @@ import com.ejo.stockdownloader.data.Stock;
 
 public class IndicatorEMA extends Indicator {
 
+    private IndicatorSMA equivalentSMA;
+
     private final int period;
 
     private DateTime currentCalculationDate;
 
     public IndicatorEMA(Stock stock, boolean loadOnInstantiation, int period) {
         super(stock, loadOnInstantiation);
+        this.equivalentSMA = new IndicatorSMA(getStock(),false,period);
         this.period = period;
     }
 
@@ -24,8 +27,29 @@ public class IndicatorEMA extends Indicator {
     }
 
     @Override
-    public float[] calculateData(DateTime candleTime) {
-        return new float[0];
+    public float[] calculateData(DateTime dateTime) {
+        float open = getStock().getOpen(dateTime);
+        float close = getStock().getClose(dateTime);
+
+        double weight = (double) 2 / (getPeriod() + 1);
+
+        DateTime lastCandleTime = new DateTime(dateTime.getYearInt(),dateTime.getMonthInt(),dateTime.getDayInt(),dateTime.getHourInt(),dateTime.getMinuteInt(),dateTime.getSecondInt() - getStock().getTimeFrame().getSeconds());
+        double prevOpenEMA;
+        double prevCloseEMA;
+        try {
+            prevOpenEMA = Float.parseFloat(getHistoricalData().get(lastCandleTime.getDateTimeID())[0]);
+            prevCloseEMA = Float.parseFloat(getHistoricalData().get(lastCandleTime.getDateTimeID())[1]);
+        } catch (NullPointerException e) {
+            prevOpenEMA = equivalentSMA.calculateData(dateTime)[0];
+            prevCloseEMA = equivalentSMA.calculateData(dateTime)[1];
+        }
+        double openEMA = open == -1 ? prevOpenEMA : open * weight + prevOpenEMA * (1-weight);
+        double closeEMA = close == -1 ? prevCloseEMA : close * weight + prevCloseEMA * (1-weight);
+
+        getHistoricalData().put(dateTime.getDateTimeID(), new String[]{String.valueOf(openEMA) ,String.valueOf(closeEMA)});
+        this.currentCalculationDate = dateTime;
+
+        return new float[]{(float) openEMA, (float) closeEMA};
     }
 
     @Override

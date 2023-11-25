@@ -16,7 +16,7 @@ public class App {
             "Trade Companion",
             new Vector(100,100),
             new Vector(1200,800),
-            new UpDownScene(),
+            new TestScene(),
             true, 4, 60, 60
     );
 
