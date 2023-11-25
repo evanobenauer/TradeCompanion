@@ -68,10 +68,13 @@ public class TestScene extends Scene {
         super.draw();
         QuickDraw.drawText(String.valueOf(stock.getPrice()), Fonts.getDefaultFont(40), new Vector(2, progressBar.getPos().getY() - 42), ColorE.WHITE);
 
-        if (SMA.isProgressActive() && SMA.getCurrentCalculationDate() != null) QuickDraw.drawText(SMA.getCurrentCalculationDate().getFormattedDateTime(),Fonts.getDefaultFont(20),new Vector(progressBar2.getSize().getX() + 4,progressBar2.getPos().getY()),ColorE.WHITE);
-        if (EMA.isProgressActive() && EMA.getCurrentCalculationDate() != null) QuickDraw.drawText(EMA.getCurrentCalculationDate().getFormattedDateTime(),Fonts.getDefaultFont(20),new Vector(progressBar3.getSize().getX() + 4,progressBar3.getPos().getY()),ColorE.WHITE);
+        if (SMA.isProgressActive() && SMA.getCurrentCalculationDate() != null) QuickDraw.drawText(SMA.getCurrentCalculationDate().toString(),Fonts.getDefaultFont(20),new Vector(progressBar2.getSize().getX() + 4,progressBar2.getPos().getY()),ColorE.WHITE);
+        if (EMA.isProgressActive() && EMA.getCurrentCalculationDate() != null) QuickDraw.drawText(EMA.getCurrentCalculationDate().toString(),Fonts.getDefaultFont(20),new Vector(progressBar3.getSize().getX() + 4,progressBar3.getPos().getY()),ColorE.WHITE);
 
-        drawCandles(stock,new DateTime(2023,11,22,15,59 + candleOffset),455,500 + candleYOffset,6 * candleScaleX,20,new Vector(candleScaleX,candleScaleY));
+
+        DateTime time = new DateTime(20231113113000L).getAdded(candleOffset * 60); //new DateTime(2023,11,22,15,59 + candleOffset)
+        double focusPrice = EMA.getCloseValue(time);
+        drawCandles(stock,time,focusPrice,getSize().getY() / 2 + candleYOffset,6 * candleScaleX,20,new Vector(candleScaleX,candleScaleY));
     }
 
 
@@ -86,6 +89,7 @@ public class TestScene extends Scene {
         super.onKeyPress(key, scancode, action, mods);
         if (action == Key.ACTION_RELEASE) return;
         int speed = Key.isShiftDown() ? 10 : 1;
+        if (key == Key.KEY_J.getId()) candleOffset = 0;
         if (key == Key.KEY_LEFT.getId()) candleOffset -= speed;
         if (key == Key.KEY_RIGHT.getId()) candleOffset += speed;
 
@@ -103,8 +107,9 @@ public class TestScene extends Scene {
         }
         if (key == Key.KEY_C.getId()) {
             Thread thread = new Thread(() -> {
-                SMA.calculateData(new DateTime(2023, 11, 1, 4, 0), new DateTime(2023, 11, 24, 19, 59));
-                //EMA.calculateData(new DateTime(2023, 11, 1, 4, 0), new DateTime(2023, 11, 24, 19, 59));
+                //SMA.calculateData(new DateTime(2023, 11, 1, 4, 0), new DateTime(2023, 11, 24, 19, 59));
+                //EMA.calculateData(new DateTime(2004, 11, 1, 4, 0), new DateTime(2023, 11, 24, 19, 59));
+                EMA.calculateData();
             });
             thread.setDaemon(true);
             thread.start();
@@ -131,7 +136,7 @@ public class TestScene extends Scene {
             int candleAmount = 100;//(int) (getSize().getX() / 18) + 1;
             for (int i = 0; i < candleAmount; i++) {
                 double x = getSize().getX() - ((separation + candleWidth) * (i + 1)) * candleScale.getX();
-                DateTime candleTime = new DateTime(openTime.getYearInt(), openTime.getMonthInt(), openTime.getDayInt(), openTime.getHourInt(), openTime.getMinuteInt(), openTime.getSecondInt() - stock.getTimeFrame().getSeconds() * i);
+                DateTime candleTime = new DateTime(openTime.getYear(), openTime.getMonth(), openTime.getDay(), openTime.getHour(), openTime.getMinute(), openTime.getSecond() - stock.getTimeFrame().getSeconds() * i);
                 CandleUI historicalCandle = new CandleUI(stock, candleTime, x, focusY, focusPrice, candleWidth * candleScale.getX(), new Vector(1,candleScale.getY()));
                 listCandle.add(historicalCandle);
                 double smaY = focusY -(SMA.getCloseValue(candleTime) * candleScale.getY()) + focusPrice*candleScale.getY();
@@ -202,7 +207,7 @@ public class TestScene extends Scene {
         QuickDraw.drawRect(new Vector(x - 2, y), new Vector(mousePos.getX() - x + 2, mousePos.getY() - y - 1), new ColorE(0, 125, 200, 200));
 
         //Draw Data
-        QuickDraw.drawText(candle.getOpenTime().getFormattedDateTime(),new Font("Arial", Font.PLAIN, textSize),new Vector(x,y),ColorE.WHITE);
+        QuickDraw.drawText(candle.getOpenTime().toString(),new Font("Arial", Font.PLAIN, textSize),new Vector(x,y),ColorE.WHITE);
         QuickDraw.drawText("Open:" + open, new Font("Arial", Font.PLAIN, textSize), new Vector(x, y + textSize), ColorE.WHITE);
         QuickDraw.drawText("Close:" + close, new Font("Arial", Font.PLAIN, textSize), new Vector(x, y + textSize * 2), ColorE.WHITE);
         QuickDraw.drawText("Min:" + min, new Font("Arial", Font.PLAIN, textSize), new Vector(x, y + textSize * 3), ColorE.WHITE);

@@ -88,7 +88,7 @@ public abstract class Indicator {
 
         int loopCount = 0;
         while (currentDateTime.getDateTimeID() < endCandleTime.getDateTimeID()) {
-            currentDateTime = new DateTime(startCandleTime.getYearInt(), startCandleTime.getMonthInt(), startCandleTime.getDayInt(), startCandleTime.getHourInt(), startCandleTime.getMinuteInt(), startCandleTime.getSecondInt() + loopCount * getStock().getTimeFrame().getSeconds());
+            currentDateTime = new DateTime(startCandleTime.getYear(), startCandleTime.getMonth(), startCandleTime.getDay(), startCandleTime.getHour(), startCandleTime.getMinute(), startCandleTime.getSecond() + loopCount * getStock().getTimeFrame().getSeconds());
 
             if (!StockUtil.isPriceActive(getStock().isExtendedHours(), currentDateTime)) {
                 loopCount++;
@@ -235,21 +235,21 @@ public abstract class Indicator {
 
 
     private static double getDateTimePercent(DateTime start, DateTime current, DateTime end) {
-        double year = current.getYearInt();
-        double yearDiff = end.getYearInt() - start.getYearInt();
+        double year = current.getYear();
+        double yearDiff = end.getYear() - start.getYear();
         double yearRange = 1 + yearDiff;
 
-        double month = current.getMonthInt();
-        double monthDiff = end.getMonthInt() - start.getMonthInt();
-        double monthRange = 1 + (year == end.getYearInt() ? monthDiff : 12);
+        double month = current.getMonth();
+        double monthDiff = end.getMonth() - start.getMonth();
+        double monthRange = 1 + (year == end.getYear() ? monthDiff : 12);
 
-        double day = current.getDayInt();
-        double dayDiff = end.getDayInt() - start.getDayInt();
-        double dayRange = 1 + (month == end.getMonthInt() ? dayDiff : 31);
+        double day = current.getDay();
+        double dayDiff = end.getDay() - start.getDay();
+        double dayRange = 1 + (month == end.getMonth() ? dayDiff : 31);
 
-        double yearPercent = (year - start.getYearInt()) / yearRange;
-        double monthPercent = (month - start.getMonthInt()) / monthRange / yearRange;
-        double dayPercent = (day - start.getDayInt()) / dayRange / monthRange / yearRange;
+        double yearPercent = (year - start.getYear()) / yearRange;
+        double monthPercent = (month - start.getMonth()) / monthRange / yearRange;
+        double dayPercent = (day - start.getDay()) / dayRange / monthRange / yearRange;
 
         return yearPercent + monthPercent + dayPercent;
     }

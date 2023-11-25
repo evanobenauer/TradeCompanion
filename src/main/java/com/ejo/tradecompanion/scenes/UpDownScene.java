@@ -73,7 +73,7 @@ public class UpDownScene extends Scene {
             int candleAmount = (int) (getSize().getX() / 18) + 1;
             for (int i = 0; i < candleAmount; i++) {
                 double x = getSize().getX() - (separation + candleWidth) * (i + 1);
-                DateTime candleTime = new DateTime(ot.getYearInt(), ot.getMonthInt(), ot.getDayInt(), ot.getHourInt(), ot.getMinuteInt(), ot.getSecondInt() - stock.getTimeFrame().getSeconds() * i);
+                DateTime candleTime = new DateTime(ot.getYear(), ot.getMonth(), ot.getDay(), ot.getHour(), ot.getMinute(), ot.getSecond() - stock.getTimeFrame().getSeconds() * i);
                 CandleUI historicalCandle = new CandleUI(stock, candleTime, x, focusY, focusPrice, candleWidth, candleScale);
                 listCandle.add(historicalCandle);
                 double emaY = focusY -(SMA.getCloseValue(candleTime) * candleScale.getY()) + focusPrice*candleScale.getY();
@@ -135,7 +135,7 @@ public class UpDownScene extends Scene {
         QuickDraw.drawRect(new Vector(x - 2, y), new Vector(mousePos.getX() - x + 2, mousePos.getY() - y - 1), new ColorE(0, 125, 200, 200));
 
         //Draw Data
-        QuickDraw.drawText(candle.getOpenTime().getFormattedDateTime(),new Font("Arial", Font.PLAIN, textSize),new Vector(x,y),ColorE.WHITE);
+        QuickDraw.drawText(candle.getOpenTime().toString(),new Font("Arial", Font.PLAIN, textSize),new Vector(x,y),ColorE.WHITE);
         QuickDraw.drawText("Open:" + open, new Font("Arial", Font.PLAIN, textSize), new Vector(x, y + textSize), ColorE.WHITE);
         QuickDraw.drawText("Close:" + close, new Font("Arial", Font.PLAIN, textSize), new Vector(x, y + textSize * 2), ColorE.WHITE);
         QuickDraw.drawText("Min:" + min, new Font("Arial", Font.PLAIN, textSize), new Vector(x, y + textSize * 3), ColorE.WHITE);

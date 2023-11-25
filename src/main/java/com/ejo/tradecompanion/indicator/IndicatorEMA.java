@@ -1,7 +1,9 @@
 package com.ejo.tradecompanion.indicator;
 
+import com.ejo.glowlib.math.MathE;
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.stockdownloader.data.Stock;
+import com.ejo.stockdownloader.util.StockUtil;
 
 public class IndicatorEMA extends Indicator {
 
@@ -33,22 +35,28 @@ public class IndicatorEMA extends Indicator {
 
         double weight = (double) 2 / (getPeriod() + 1);
 
-        //TODO: The way this is calculated causes the EMA to start as the SMA whenever the previous candle is NULL
-        // lastCandleTime will cause this every time a day starts
-        // modify the lastCandleTime to return the last time BEFORE a break. Maybe use a while loop
-        DateTime lastCandleTime = new DateTime(dateTime.getYearInt(),dateTime.getMonthInt(),dateTime.getDayInt(),dateTime.getHourInt(),dateTime.getMinuteInt(),dateTime.getSecondInt() - getStock().getTimeFrame().getSeconds());
+        int i = 1;
+        DateTime lastCandleTime = new DateTime(dateTime.getYear(),dateTime.getMonth(),dateTime.getDay(),dateTime.getHour(),dateTime.getMinute(),dateTime.getSecond() - getStock().getTimeFrame().getSeconds() * i);
+        while (!StockUtil.isPriceActive(getStock().isExtendedHours(),lastCandleTime)) {
+            i++;
+            lastCandleTime = new DateTime(lastCandleTime.getYear(),lastCandleTime.getMonth(),lastCandleTime.getDay(),lastCandleTime.getHour(),lastCandleTime.getMinute(),lastCandleTime.getSecond() - getStock().getTimeFrame().getSeconds() * i);;
+        }
+
         double prevOpenEMA;
         double prevCloseEMA;
         try {
             prevOpenEMA = Float.parseFloat(getHistoricalData().get(lastCandleTime.getDateTimeID())[0]);
             prevCloseEMA = Float.parseFloat(getHistoricalData().get(lastCandleTime.getDateTimeID())[1]);
-        } catch (NullPointerException e) {
+            if (Double.isNaN(prevOpenEMA)) { //If the previous EMA does not exist, set this value to the current SMA
+                prevOpenEMA = equivalentSMA.calculateData(dateTime)[0];
+                prevCloseEMA = equivalentSMA.calculateData(dateTime)[1];
+            }
+        } catch (NullPointerException | NumberFormatException e) {
             prevOpenEMA = equivalentSMA.calculateData(dateTime)[0];
             prevCloseEMA = equivalentSMA.calculateData(dateTime)[1];
         }
-        double openEMA = open == -1 ? prevOpenEMA : open * weight + prevOpenEMA * (1-weight);
-        double closeEMA = close == -1 ? prevCloseEMA : close * weight + prevCloseEMA * (1-weight);
-
+        double openEMA = MathE.roundDouble(open == -1 ? prevOpenEMA : open * weight + prevOpenEMA * (1-weight),4);
+        double closeEMA = MathE.roundDouble(close == -1 ? prevCloseEMA : close * weight + prevCloseEMA * (1-weight),4);
         getHistoricalData().put(dateTime.getDateTimeID(), new String[]{String.valueOf(openEMA) ,String.valueOf(closeEMA)});
         this.currentCalculationDate = dateTime;
 
