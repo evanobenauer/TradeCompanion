@@ -28,7 +28,8 @@ public class TestScene extends Scene {
     IndicatorEMA EMA = new IndicatorEMA(stock,false,50);
 
     ProgressBarUI<Double> progressBar = new ProgressBarUI<>(new Vector(200,200),new Vector(300,50),ColorE.BLUE,stock.getClosePercent(),0,1);
-    ProgressBarUI<Double> progressBar2 = new ProgressBarUI<>(new Vector(0,0),new Vector(300,25),ColorE.BLUE,EMA.getProgressContainer(),0,1);
+    ProgressBarUI<Double> progressBar2 = new ProgressBarUI<>(new Vector(0,0),new Vector(300,25),ColorE.BLUE,SMA.getProgressContainer(),0,1);
+    ProgressBarUI<Double> progressBar3 = new ProgressBarUI<>(new Vector(0,30),new Vector(300,25),ColorE.BLUE,EMA.getProgressContainer(),0,1);
 
     public TestScene() {
         super("Test Scene");
@@ -49,7 +50,7 @@ public class TestScene extends Scene {
         stockUpdateThread.setName("Stock Update Thread");
         stockUpdateThread.start();
 
-        addElements(progressBar,progressBar2);
+        addElements(progressBar,progressBar2,progressBar3);
     }
 
     int candleOffset = 0;
@@ -63,12 +64,13 @@ public class TestScene extends Scene {
         progressBar.setPos(new Vector(0,getSize().getY() - progressBar.getSize().getY()));
         QuickDraw.drawRect(progressBar.getPos(),progressBar.getSize(),ColorE.BLACK);
         QuickDraw.drawRect(progressBar2.getPos(),progressBar2.getSize(),ColorE.BLACK);
+        QuickDraw.drawRect(progressBar3.getPos(),progressBar3.getSize(),ColorE.BLACK);
         super.draw();
         QuickDraw.drawText(String.valueOf(stock.getPrice()), Fonts.getDefaultFont(40), new Vector(2, progressBar.getPos().getY() - 42), ColorE.WHITE);
 
-        if (SMA.isProgressActive() && SMA.getCurrentCalculationDate() != null) QuickDraw.drawText(SMA.getCurrentCalculationDate().getFormattedDateTime(),Fonts.getDefaultFont(20),new Vector(2,50),ColorE.WHITE);
+        if (SMA.isProgressActive() && SMA.getCurrentCalculationDate() != null) QuickDraw.drawText(SMA.getCurrentCalculationDate().getFormattedDateTime(),Fonts.getDefaultFont(20),new Vector(progressBar2.getSize().getX() + 4,progressBar2.getPos().getY()),ColorE.WHITE);
+        if (EMA.isProgressActive() && EMA.getCurrentCalculationDate() != null) QuickDraw.drawText(EMA.getCurrentCalculationDate().getFormattedDateTime(),Fonts.getDefaultFont(20),new Vector(progressBar3.getSize().getX() + 4,progressBar3.getPos().getY()),ColorE.WHITE);
 
-        //drawCandles(this,stock, stock.getPrice(),300,20,50,new Vector(1,1000));
         drawCandles(stock,new DateTime(2023,11,22,15,59 + candleOffset),455,500 + candleYOffset,6 * candleScaleX,20,new Vector(candleScaleX,candleScaleY));
     }
 
@@ -101,8 +103,8 @@ public class TestScene extends Scene {
         }
         if (key == Key.KEY_C.getId()) {
             Thread thread = new Thread(() -> {
-                //SMA.calculateData(new DateTime(2023, 10, 3, 4, 0), new DateTime(2023, 11, 24, 19, 59));
-                EMA.calculateData(new DateTime(2023, 10, 3, 4, 0), new DateTime(2023, 11, 24, 19, 59));
+                SMA.calculateData(new DateTime(2023, 11, 1, 4, 0), new DateTime(2023, 11, 24, 19, 59));
+                //EMA.calculateData(new DateTime(2023, 11, 1, 4, 0), new DateTime(2023, 11, 24, 19, 59));
             });
             thread.setDaemon(true);
             thread.start();
@@ -122,14 +124,14 @@ public class TestScene extends Scene {
         ArrayList<Vector> listSMA50 = new ArrayList<>();
         ArrayList<Vector> listEMA50 = new ArrayList<>();
 
-        DateTime ot = endTime.equals(StockUtil.getAdjustedCurrentTime()) ? stock.getOpenTime() : endTime;
+        DateTime openTime = endTime.equals(StockUtil.getAdjustedCurrentTime()) ? stock.getOpenTime() : endTime;
 
         //Create Historical Candles
         try {
-            int candleAmount = 800;//(int) (getSize().getX() / 18) + 1;
+            int candleAmount = 100;//(int) (getSize().getX() / 18) + 1;
             for (int i = 0; i < candleAmount; i++) {
                 double x = getSize().getX() - ((separation + candleWidth) * (i + 1)) * candleScale.getX();
-                DateTime candleTime = new DateTime(ot.getYearInt(), ot.getMonthInt(), ot.getDayInt(), ot.getHourInt(), ot.getMinuteInt(), ot.getSecondInt() - stock.getTimeFrame().getSeconds() * i);
+                DateTime candleTime = new DateTime(openTime.getYearInt(), openTime.getMonthInt(), openTime.getDayInt(), openTime.getHourInt(), openTime.getMinuteInt(), openTime.getSecondInt() - stock.getTimeFrame().getSeconds() * i);
                 CandleUI historicalCandle = new CandleUI(stock, candleTime, x, focusY, focusPrice, candleWidth * candleScale.getX(), new Vector(1,candleScale.getY()));
                 listCandle.add(historicalCandle);
                 double smaY = focusY -(SMA.getCloseValue(candleTime) * candleScale.getY()) + focusPrice*candleScale.getY();
@@ -150,12 +152,16 @@ public class TestScene extends Scene {
         }
 
         try {
-            LineUI line = new LineUI(ColorE.BLUE, LineUI.Type.PLAIN, 4d, listSMA50.toArray(new Vector[0]));
-            line.draw();
-            LineUI line2 = new LineUI(ColorE.YELLOW, LineUI.Type.PLAIN, 4d, listEMA50.toArray(new Vector[0]));
-            line2.draw();
+            LineUI lineSMA = new LineUI(ColorE.BLUE, LineUI.Type.PLAIN, 4d, listSMA50.toArray(new Vector[0]));
+            lineSMA.draw();
         } catch (Exception e) {
+        }
 
+        try {
+
+            LineUI lineEMA = new LineUI(ColorE.YELLOW, LineUI.Type.PLAIN, 4d, listEMA50.toArray(new Vector[0]));
+            lineEMA.draw();
+        } catch (Exception e) {
         }
 
         //Draw Tooltips

@@ -5,7 +5,7 @@ import com.ejo.stockdownloader.data.Stock;
 
 public class IndicatorEMA extends Indicator {
 
-    private IndicatorSMA equivalentSMA;
+    private final IndicatorSMA equivalentSMA;
 
     private final int period;
 
@@ -33,6 +33,9 @@ public class IndicatorEMA extends Indicator {
 
         double weight = (double) 2 / (getPeriod() + 1);
 
+        //TODO: The way this is calculated causes the EMA to start as the SMA whenever the previous candle is NULL
+        // lastCandleTime will cause this every time a day starts
+        // modify the lastCandleTime to return the last time BEFORE a break. Maybe use a while loop
         DateTime lastCandleTime = new DateTime(dateTime.getYearInt(),dateTime.getMonthInt(),dateTime.getDayInt(),dateTime.getHourInt(),dateTime.getMinuteInt(),dateTime.getSecondInt() - getStock().getTimeFrame().getSeconds());
         double prevOpenEMA;
         double prevCloseEMA;
