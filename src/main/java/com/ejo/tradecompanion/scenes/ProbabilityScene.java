@@ -31,6 +31,10 @@ public class ProbabilityScene extends Scene {
         super.onKeyPress(key, scancode, action, mods);
         if (action != Key.ACTION_PRESS) return;
         if (key == Key.KEY_C.getId()) {
+            float open;
+            float close;
+            float min;
+            float max;
             for (Map.Entry<Long, String[]> data : stock.getHistoricalData().entrySet()) { //Loops through all stock data
                 //Use this loop to find all similar candles and their datetimes
             }
