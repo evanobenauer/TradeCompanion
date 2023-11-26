@@ -3,6 +3,7 @@ package com.ejo.tradecompanion;
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowui.Window;
 import com.ejo.tradecompanion.scenes.ProbabilityScene;
+import com.ejo.tradecompanion.scenes.ProbabilitySceneClean;
 import com.ejo.tradecompanion.scenes.TestScene;
 import com.ejo.tradecompanion.scenes.UpDownScene;
 
@@ -17,7 +18,7 @@ public class App {
             "Trade Companion",
             new Vector(100,100),
             new Vector(1200,800),
-            new ProbabilityScene(),
+            new ProbabilitySceneClean(),
             true, 4, 60, 60
     );
 
