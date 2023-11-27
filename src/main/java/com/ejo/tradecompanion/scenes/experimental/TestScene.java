@@ -67,7 +67,7 @@ public class TestScene extends Scene {
 
         DateTime time = new DateTime(20231113113000L).getAdded(candleOffset * 60); //new DateTime(2023,11,22,15,59 + candleOffset)
         double focusPrice = EMA.getCloseValue(time);
-        RenderUtil.drawStockData(this,stock,time,100,focusPrice,getSize().getY() / 2 + candleYOffset,6 * candleScaleX,20,new Vector(candleScaleX,candleScaleY),EMA,SMA);
+        RenderUtil.drawStockData(this,stock,time,600,focusPrice,getSize().getY() / 2 + candleYOffset,6 * candleScaleX,20,new Vector(candleScaleX,candleScaleY),EMA,SMA);
     }
 
 

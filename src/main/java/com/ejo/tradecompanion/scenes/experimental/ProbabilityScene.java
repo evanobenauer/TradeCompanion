@@ -11,9 +11,9 @@ import com.ejo.glowui.util.Mouse;
 import com.ejo.glowui.util.render.Fonts;
 import com.ejo.glowui.util.render.QuickDraw;
 import com.ejo.stockdownloader.data.Stock;
-import com.ejo.stockdownloader.render.CandleUI;
-import com.ejo.stockdownloader.util.DrawUtil;
 import com.ejo.stockdownloader.util.TimeFrame;
+import com.ejo.tradecompanion.elements.CandleUI;
+import com.ejo.tradecompanion.util.RenderUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,7 +45,7 @@ public class ProbabilityScene extends Scene {
         CandleUI candle = new CandleUI(stock,time,3,100,stock.getOpen(time),30,new Vector(1,200));
         candle.tick(this);
         candle.draw(this);
-        if (candle.isMouseOver()) DrawUtil.drawCandleTooltip(candle,getWindow().getScaledMousePos());
+        if (candle.isMouseOver()) RenderUtil.drawCandleTooltip(candle,getWindow().getScaledMousePos());
         QuickDraw.drawText(candle.getOpenTime().toString(), Fonts.getDefaultFont(20),candle.getPos().getAdded(candle.getWidth(),0),ColorE.WHITE);
 
         //Draw Similar Candles
@@ -58,7 +58,7 @@ public class ProbabilityScene extends Scene {
                 candleUI.draw(this);
                 candleUI.tick(this);
                 if (candleUI.isMouseOver()) {
-                    DrawUtil.drawCandleTooltip(candleUI, getWindow().getScaledMousePos());
+                    RenderUtil.drawCandleTooltip(candleUI, getWindow().getScaledMousePos());
                     ArrayList<CandleUI> candList = new ArrayList<>();
                     double pX = getSize().getX() / 2;
                     double pY = getSize().getY() - 100;

@@ -8,7 +8,7 @@ import com.ejo.glowui.scene.Scene;
 import com.ejo.glowui.scene.elements.SideBarUI;
 import com.ejo.glowui.scene.elements.widget.ToggleUI;
 import com.ejo.stockdownloader.data.Stock;
-import com.ejo.stockdownloader.util.DrawUtil;
+import com.ejo.tradecompanion.util.RenderUtil;
 
 public class ChartViewScene extends Scene {
 
@@ -34,7 +34,7 @@ public class ChartViewScene extends Scene {
         drawBackground(new ColorE(50,50,50));
         super.draw();
         DateTime time = new DateTime(2023,11,22,11,30);
-        DrawUtil.drawCandles(this,getStock(),time,getStock().getClose(time),getSize().getY() / 2,4,30,new Vector(1,300));
+        RenderUtil.drawCandles(this,getStock(),time,getStock().getClose(time),getSize().getY() / 2,4,30,new Vector(1,300));
     }
 
     @Override
