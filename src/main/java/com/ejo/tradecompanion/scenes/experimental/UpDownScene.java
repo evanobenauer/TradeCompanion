@@ -1,4 +1,4 @@
-package com.ejo.tradecompanion.scenes;
+package com.ejo.tradecompanion.scenes.experimental;
 
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowlib.misc.ColorE;
