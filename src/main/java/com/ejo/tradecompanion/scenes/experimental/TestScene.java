@@ -18,8 +18,8 @@ public class TestScene extends Scene {
 
     Stock stock = new Stock("SPY", TimeFrame.ONE_MINUTE,true, Stock.PriceSource.MARKETWATCH,false);
 
-    IndicatorSMA SMA = new IndicatorSMA(stock,false,50);
-    IndicatorEMA EMA = new IndicatorEMA(stock,false,50);
+    IndicatorSMA SMA = new IndicatorSMA(stock,50);
+    IndicatorEMA EMA = new IndicatorEMA(stock,50);
 
     ProgressBarUI<Double> progressBar = new ProgressBarUI<>(new Vector(200,200),new Vector(300,50),ColorE.BLUE,stock.getClosePercent(),0,1);
     ProgressBarUI<Double> progressBar2 = new ProgressBarUI<>(new Vector(0,0),new Vector(300,25),ColorE.BLUE,SMA.getProgressContainer(),0,1);

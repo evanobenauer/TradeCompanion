@@ -35,13 +35,8 @@ public abstract class Indicator {
     protected boolean progressActive = false;
 
 
-    public Indicator(Stock stock, boolean loadOnInstantiation) {
-        this.stock = stock;
-        if (loadOnInstantiation) loadHistoricalData();
-    }
-
     public Indicator(Stock stock) {
-        this(stock, true);
+        this.stock = stock;
     }
 
     /**
@@ -182,21 +177,26 @@ public abstract class Indicator {
 
     public abstract String getDefaultFileName();
 
+    /**
+     * When needing to create multiple value calls, it is smart to assigned getData to an array and call from there as it
+     * is much more resource efficient and can speed up a program
+     * @param dateTime
+     * @return
+     */
+    public float[] getData(DateTime dateTime) {
+        String[] rawData = getHistoricalData().get(dateTime.getDateTimeID());
+        if (rawData == null) return new float[]{-1,-1};
+
+        return new float[]{Float.parseFloat(rawData[0]),Float.parseFloat(rawData[1])};
+    }
+
     public float getLiveOpenValue() {
         return open;
     }
 
     public float getOpenValue(DateTime dateTime) {
-        try {
-            if (dateTime == null || dateTime.equals(getStock().getOpenTime())) {
-                //return getLiveOpenValue();
-                return calculateData(getStock().getOpenTime())[0];
-            } else {
-                return Float.parseFloat(getHistoricalData().get(dateTime.getDateTimeID())[0]);
-            }
-        } catch (NullPointerException e) {
-            return -1;
-        }
+        if (dateTime.equals(getStock().getOpenTime())) return calculateData(getStock().getOpenTime())[0];
+        return getData(dateTime)[0];
     }
 
     public float getLiveCloseValue() {
@@ -204,16 +204,8 @@ public abstract class Indicator {
     }
 
     public float getCloseValue(DateTime dateTime) {
-        try {
-            if (dateTime == null || dateTime.equals(getStock().getOpenTime())) {
-                //return getLiveCloseValue();
-                return calculateData(getStock().getOpenTime())[1];
-            } else {
-                return Float.parseFloat(getHistoricalData().get(dateTime.getDateTimeID())[1]);
-            }
-        } catch (NullPointerException e) {
-            return -1;
-        }
+        if (dateTime.equals(getStock().getOpenTime())) return calculateData(getStock().getOpenTime())[1];
+        return getData(dateTime)[1];
     }
 
     public Container<Double> getProgressContainer() {
@@ -258,8 +250,4 @@ public abstract class Indicator {
         return getStock().getTicker() + "_" + getStock().getTimeFrame().getTag();
     }
 
-    //TODO: make data source options
-    enum DataSource {
-        SOURCE1
-    }
 }

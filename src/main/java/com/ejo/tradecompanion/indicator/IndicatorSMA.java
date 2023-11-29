@@ -14,13 +14,9 @@ public class IndicatorSMA extends Indicator {
 
     private DateTime currentCalculationDate;
 
-    public IndicatorSMA(Stock stock, boolean loadOnInstantiation, int period) {
-        super(stock, loadOnInstantiation);
-        this.period = period;
-    }
-
     public IndicatorSMA(Stock stock, int period) {
-        this(stock,true,period);
+        super(stock);
+        this.period = period;
     }
 
     @Override
@@ -50,8 +46,9 @@ public class IndicatorSMA extends Indicator {
                 continue;
             }
 
-            float open = getStock().getOpen(nextDate);
-            float close = getStock().getClose(nextDate);
+            float[] data = getStock().getData(nextDate);
+            float open = data[0];
+            float close = data[1];
             if (open != -1) openAvgList.add(open);
             if (close != -1) closeAvgList.add(close);
 

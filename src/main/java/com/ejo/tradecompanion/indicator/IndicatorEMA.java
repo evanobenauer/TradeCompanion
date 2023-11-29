@@ -13,14 +13,10 @@ public class IndicatorEMA extends Indicator {
 
     private DateTime currentCalculationDate;
 
-    public IndicatorEMA(Stock stock, boolean loadOnInstantiation, int period) {
-        super(stock, loadOnInstantiation);
-        this.equivalentSMA = new IndicatorSMA(getStock(),false,period);
-        this.period = period;
-    }
-
     public IndicatorEMA(Stock stock, int period) {
-        this(stock,true,period);
+        super(stock);
+        this.equivalentSMA = new IndicatorSMA(getStock(),period);
+        this.period = period;
     }
 
     @Override
@@ -30,8 +26,9 @@ public class IndicatorEMA extends Indicator {
 
     @Override
     public float[] calculateData(DateTime dateTime) {
-        float open = getStock().getOpen(dateTime);
-        float close = getStock().getClose(dateTime);
+        float[] data = getStock().getData(dateTime);
+        float open = data[0];
+        float close = data[1];
 
         double weight = (double) 2 / (getPeriod() + 1);
 
@@ -45,8 +42,9 @@ public class IndicatorEMA extends Indicator {
         double prevOpenEMA;
         double prevCloseEMA;
         try {
-            prevOpenEMA = Float.parseFloat(getHistoricalData().get(lastCandleTime.getDateTimeID())[0]);
-            prevCloseEMA = Float.parseFloat(getHistoricalData().get(lastCandleTime.getDateTimeID())[1]);
+            float[] prevEMA = getData(lastCandleTime);
+            prevOpenEMA = prevEMA[0];
+            prevCloseEMA = prevEMA[1];
             if (Double.isNaN(prevOpenEMA)) { //If the previous EMA does not exist, set this value to the current SMA
                 prevOpenEMA = equivalentSMA.calculateData(dateTime)[0];
                 prevCloseEMA = equivalentSMA.calculateData(dateTime)[1];
