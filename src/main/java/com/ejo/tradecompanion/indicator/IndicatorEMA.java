@@ -15,7 +15,7 @@ public class IndicatorEMA extends Indicator {
 
     public IndicatorEMA(Stock stock, int period) {
         super(stock);
-        this.equivalentSMA = new IndicatorSMA(getStock(),period);
+        this.equivalentSMA = new IndicatorSMA(getStock(), period);
         this.period = period;
     }
 
@@ -33,10 +33,10 @@ public class IndicatorEMA extends Indicator {
         double weight = (double) 2 / (getPeriod() + 1);
 
         int i = 1;
-        DateTime lastCandleTime = new DateTime(dateTime.getYear(),dateTime.getMonth(),dateTime.getDay(),dateTime.getHour(),dateTime.getMinute(),dateTime.getSecond() - getStock().getTimeFrame().getSeconds() * i);
-        while (!StockUtil.isPriceActive(getStock().isExtendedHours(),lastCandleTime)) {
+        DateTime lastCandleTime = new DateTime(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond() - getStock().getTimeFrame().getSeconds() * i);
+        while (!StockUtil.isPriceActive(getStock().isExtendedHours(), lastCandleTime)) {
             i++;
-            lastCandleTime = new DateTime(lastCandleTime.getYear(),lastCandleTime.getMonth(),lastCandleTime.getDay(),lastCandleTime.getHour(),lastCandleTime.getMinute(),lastCandleTime.getSecond() - getStock().getTimeFrame().getSeconds() * i);;
+            lastCandleTime = new DateTime(lastCandleTime.getYear(), lastCandleTime.getMonth(), lastCandleTime.getDay(), lastCandleTime.getHour(), lastCandleTime.getMinute(), lastCandleTime.getSecond() - getStock().getTimeFrame().getSeconds() * i);
         }
 
         double prevOpenEMA;
@@ -53,12 +53,12 @@ public class IndicatorEMA extends Indicator {
             prevOpenEMA = equivalentSMA.calculateData(dateTime)[0];
             prevCloseEMA = equivalentSMA.calculateData(dateTime)[1];
         }
-        double openEMA = MathE.roundDouble(open == -1 ? prevOpenEMA : open * weight + prevOpenEMA * (1-weight),4);
-        double closeEMA = MathE.roundDouble(close == -1 ? prevCloseEMA : close * weight + prevCloseEMA * (1-weight),4);
-        getHistoricalData().put(dateTime.getDateTimeID(), new String[]{String.valueOf(openEMA) ,String.valueOf(closeEMA)});
+        float openEMA = (float) MathE.roundDouble(open == -1 ? prevOpenEMA : open * weight + prevOpenEMA * (1 - weight), 4);
+        float closeEMA = (float) MathE.roundDouble(close == -1 ? prevCloseEMA : close * weight + prevCloseEMA * (1 - weight), 4);
+        getHistoricalData().put(dateTime.getDateTimeID(), new float[]{openEMA, closeEMA});
         this.currentCalculationDate = dateTime;
 
-        return new float[]{(float) openEMA, (float) closeEMA};
+        return new float[]{openEMA, closeEMA};
     }
 
     @Override

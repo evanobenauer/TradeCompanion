@@ -66,7 +66,7 @@ public class IndicatorSMA extends Indicator {
 
         float openAvg = (float) MathE.roundDouble(calculateAverage(openAvgList),4);
         float closeAvg = (float) MathE.roundDouble(calculateAverage(closeAvgList),4);
-        getHistoricalData().put(dateTime.getDateTimeID(), new String[]{String.valueOf(openAvg) ,String.valueOf(closeAvg)});
+        getHistoricalData().put(dateTime.getDateTimeID(), new float[]{openAvg ,closeAvg});
         this.currentCalculationDate = dateTime;
 
         return new float[]{openAvg,closeAvg};

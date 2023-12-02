@@ -1,17 +1,16 @@
 package com.ejo.tradecompanion.indicator;
 
 import com.ejo.glowlib.file.CSVManager;
+import com.ejo.glowlib.file.FileManager;
 import com.ejo.glowlib.setting.Container;
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowlib.time.StopWatch;
 import com.ejo.stockdownloader.data.Stock;
 import com.ejo.stockdownloader.util.StockUtil;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.HashMap;
 
 public abstract class Indicator {
@@ -23,7 +22,7 @@ public abstract class Indicator {
     private final Stock stock;
 
     //Historical Data HashMap
-    private HashMap<Long, String[]> dataHash = new HashMap<>();
+    private HashMap<Long, float[]> dataHash = new HashMap<>();
 
     //Live Scrape Data Variables
     private final StopWatch updateTimer = new StopWatch();
@@ -115,11 +114,11 @@ public abstract class Indicator {
      * @param fileName
      * @return
      */
-    public HashMap<Long, String[]> loadHistoricalData(String filePath, String fileName) {
+    public HashMap<Long, float[]> loadHistoricalData(String filePath, String fileName) {
         this.progressActive = true;
         try {
             File file = new File(filePath + (fileName.equals("") ? "" : "/") + fileName.replace(".csv", "") + ".csv");
-            HashMap<Long, String[]> rawMap = new HashMap<>();
+            HashMap<Long, float[]> rawMap = new HashMap<>();
 
             try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
                 String line;
@@ -129,13 +128,18 @@ public abstract class Indicator {
                     String[] row = line.split(",");
                     String key = row[0];
                     String[] rowCut = line.replace(key + ",", "").split(",");
-                    rawMap.put(Long.parseLong(row[0]), rowCut);
+
+                    float[] floatRowCut = new float[rowCut.length];
+                    for (int i = 0; i < rowCut.length; i++) floatRowCut[i] = Float.parseFloat(rowCut[i]);
+
+                    rawMap.put(Long.parseLong(row[0]), floatRowCut);
                     currentRow += 1;
                     getProgressContainer().set((double) (currentRow / fileSize));
                 }
             } catch (IOException | SecurityException e) {
                 e.printStackTrace();
             }
+            this.progressActive = false;
             return this.dataHash = rawMap;
         } catch (Exception e) {
             e.printStackTrace();
@@ -149,7 +153,7 @@ public abstract class Indicator {
      *
      * @return
      */
-    public HashMap<Long, String[]> loadHistoricalData() {
+    public HashMap<Long, float[]> loadHistoricalData() {
         return loadHistoricalData(MAIN_PATH, getDefaultFileName());
     }
 
@@ -162,7 +166,24 @@ public abstract class Indicator {
      * @return
      */
     public boolean saveHistoricalData(String filePath, String fileName) {
-        return CSVManager.saveAsCSV(getHistoricalData(), filePath, fileName);
+        this.progressActive = true;
+        FileManager.createFolderPath(filePath); //Creates the folder path if it does not exist
+        HashMap<Long, float[]> hashMap = getHistoricalData();
+        String outputFile = filePath + (filePath.equals("") ? "" : "/") + fileName.replace(".csv","") + ".csv";
+        long fileSize = hashMap.size();
+        long currentRow = 0;
+        try(FileWriter writer = new FileWriter(outputFile)) {
+            for (Long key : hashMap.keySet()) {
+                writer.write(key + "," + Arrays.toString(hashMap.get(key)).replace("[","").replace("]","").replace(" ","") + "\n");
+                currentRow += 1;
+                getProgressContainer().set((double) (currentRow / fileSize));
+            }
+            return true;
+        } catch (IOException | SecurityException e) {
+            e.printStackTrace();
+        }
+        this.progressActive = false;
+        return false;
     }
 
     /**
@@ -184,10 +205,9 @@ public abstract class Indicator {
      * @return
      */
     public float[] getData(DateTime dateTime) {
-        String[] rawData = getHistoricalData().get(dateTime.getDateTimeID());
+        float[] rawData = getHistoricalData().get(dateTime.getDateTimeID());
         if (rawData == null) return new float[]{-1,-1};
-
-        return new float[]{Float.parseFloat(rawData[0]),Float.parseFloat(rawData[1])};
+        return rawData;
     }
 
     public float getLiveOpenValue() {
@@ -217,7 +237,7 @@ public abstract class Indicator {
     }
 
 
-    public HashMap<Long, String[]> getHistoricalData() {
+    public HashMap<Long, float[]> getHistoricalData() {
         return dataHash;
     }
 

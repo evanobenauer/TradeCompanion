@@ -4,10 +4,13 @@ import com.ejo.glowlib.math.MathE;
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowlib.misc.ColorE;
 import com.ejo.glowlib.time.DateTime;
+import com.ejo.glowlib.time.StopWatch;
 import com.ejo.glowui.scene.Scene;
+import com.ejo.glowui.scene.elements.ProgressBarUI;
 import com.ejo.glowui.scene.elements.TextUI;
 import com.ejo.glowui.util.Key;
 import com.ejo.glowui.util.Mouse;
+import com.ejo.glowui.util.Util;
 import com.ejo.glowui.util.render.Fonts;
 import com.ejo.glowui.util.render.QuickDraw;
 import com.ejo.stockdownloader.data.Stock;
@@ -32,6 +35,19 @@ public class ProbabilityScene extends Scene {
 
     public ProbabilityScene() {
         super("Probability Scene");
+        Thread stockUpdateThread = new Thread(() -> {
+            while (true) {
+                stock.updateLivePrice(.5);
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        stockUpdateThread.setDaemon(true);
+        stockUpdateThread.setName("Stock Update Thread");
+        stockUpdateThread.start();
         addElements(text);
     }
 
@@ -39,7 +55,7 @@ public class ProbabilityScene extends Scene {
 
     @Override
     public void draw() {
-        //if (stock.getOpenTime() != null) time = stock.getOpenTime().getAdded(-stock.getTimeFrame().getSeconds());
+        if (stock.getOpenTime() != null) time = stock.getOpenTime().getAdded(-stock.getTimeFrame().getSeconds());
 
         drawBackground(new ColorE(50, 50, 50, 255));
         try {
@@ -47,6 +63,12 @@ public class ProbabilityScene extends Scene {
         } catch (NullPointerException e) {
             e.printStackTrace();
         }
+
+        //Draw Close Percent
+        ProgressBarUI<Double> prog = new ProgressBarUI<>(new Vector(0,getSize().getY() - 50 - 25),new Vector(100,25),ColorE.BLUE,stock.getClosePercent(),0,1);
+
+        QuickDraw.drawRect(prog.getPos(),prog.getSize(),ColorE.BLACK);
+        prog.draw();
 
         //Draw Test Candle
         CandleUI candle = new CandleUI(stock,time,3,getSize().getY() / 2 + 100,stock.getOpen(time),30,new Vector(1,200));
@@ -115,10 +137,18 @@ public class ProbabilityScene extends Scene {
         QuickDraw.drawText(String.valueOf(losses),Fonts.getDefaultFont(20),new Vector(2,getSize().getY() - 22),ColorE.WHITE);
     }
 
+    StopWatch watch = new StopWatch();
+
     @Override
     public void tick() {
+        watch.start();
+        getWindow().setEconomic(true);
         super.tick();
-        //stock.updateLiveData(.5,true);
+        stock.updateLiveData();
+        if (watch.hasTimePassedS(.5f)) {
+            Util.forceRenderFrame();
+            watch.restart();
+        }
     }
 
     int wins = 0;
@@ -149,11 +179,11 @@ public class ProbabilityScene extends Scene {
                 DateTime time = this.time;
                 System.out.println("Starting calculation");
                 // -------------------------------------
-                float precision = .03f;
+                float precision = .03f; //Maybe try .02f
                 float precisionLooseness = 0;
                 float precisionDecrease = 0;//.005f;
                 int lookbackAmount = 4;
-                boolean priceScale = false;
+                boolean priceScale = true;
                 boolean ignoreWicks = true;
                 boolean includeAfterHours = false;
 
@@ -175,7 +205,9 @@ public class ProbabilityScene extends Scene {
 
     }
 
+    //TODO: maybe add time of day & weekday probability
     //TODO: Find a way to throw out garbage data from 2000-2003. It messes stuff up. Maybe just exclude it?
+    //TODO: Add previous calculation section back to the last 3 so they can be compared especially when working with live data
     private ArrayList<Long> getSimilarCandleIDs(Stock stock, DateTime candleTime, float marginPrice, boolean doPriceScaling, boolean ignoreWicks, boolean includeAfterHours) {
         ArrayList<Long> similarCandleList = new ArrayList<>();
         int similarCandleCount = 0; //Maybe do something with this lol
@@ -189,13 +221,18 @@ public class ProbabilityScene extends Scene {
         float mainMin = stock.getMin(candleTime);
         float mainMax = stock.getMax(candleTime);
 
-        for (Map.Entry<Long, String[]> testData : stock.getHistoricalData().entrySet()) { //Loops through all stock data
+        //Maybe use this to avoid concurrent modification
+        //HashMap<Long,String[]> historicalData = (HashMap<Long, String[]>) stock.getHistoricalData().clone();
+
+        //This throws a concurrent modification exception
+        for (Map.Entry<Long, float[]> testData : stock.getHistoricalData().entrySet()) { //Loops through all stock data
             if (testData.getKey() == mainID) continue;
             if (!includeAfterHours && !StockUtil.isTradingHours(new DateTime(testData.getKey()))) continue;
-            float testOpen = Float.parseFloat(testData.getValue()[0]);
-            float testClose = Float.parseFloat(testData.getValue()[1]);
-            float testMin = Float.parseFloat(testData.getValue()[2]);
-            float testMax = Float.parseFloat(testData.getValue()[3]);
+            if (testData.getKey() < 20040000000000L) continue;//TEMPORARY REMOVE EARLY DATA. IT SUCKS
+            float testOpen = testData.getValue()[0];
+            float testClose = testData.getValue()[1];
+            float testMin = testData.getValue()[2];
+            float testMax = testData.getValue()[3];
 
             //This value scales based on the total cap of the stock over history so similarities have a chance
             float pricingScale = doPriceScaling ? testOpen / mainOpen : 1;
@@ -226,7 +263,7 @@ public class ProbabilityScene extends Scene {
         int redCloseInThreeCandles = 0;
         float avgCloseInThreeCandles = 0;
 
-        HashMap<Long, String[]> historicalData = stock.getHistoricalData();
+        HashMap<Long, float[]> historicalData = stock.getHistoricalData();
 
         DateTime prevCandleTime = candleTime.getAdded(-stock.getTimeFrame().getSeconds() * previous);
         float prevMainOpen = stock.getOpen(prevCandleTime);
@@ -239,10 +276,10 @@ public class ProbabilityScene extends Scene {
             Long prevID = new DateTime(id).getAdded(-stock.getTimeFrame().getSeconds() * previous).getDateTimeID();
             if (!includeAfterHours && !StockUtil.isTradingHours(new DateTime(id))) continue;
             try {
-                float prevTestOpen = Float.parseFloat(historicalData.get(prevID)[0]);
-                float prevTestClose = Float.parseFloat(historicalData.get(prevID)[1]);
-                float prevTestMain = Float.parseFloat(historicalData.get(prevID)[2]);
-                float prevTestMax = Float.parseFloat(historicalData.get(prevID)[3]);
+                float prevTestOpen = historicalData.get(prevID)[0];
+                float prevTestClose = historicalData.get(prevID)[1];
+                float prevTestMain = historicalData.get(prevID)[2];
+                float prevTestMax = historicalData.get(prevID)[3];
 
 
                 float pricingScale = doPriceScaling ? prevTestOpen / prevMainOpen : 1;
@@ -291,8 +328,22 @@ public class ProbabilityScene extends Scene {
 
         //TODO: Maybe use a method that adds all the variation together into one total percent that has to be below a max percent
         //TODO: since the data may cause candles to start at the wrong y pos, maybe add some sort of check for this?
-        //boolean bodySize = isWithinMargin(mainOpen,testOpen / pricingScale,marginPrice) && isWithinMargin(mainClose,testClose / pricingScale,marginPrice);//isWithinMargin(ocDiff,getOpenCloseDifference(dataOpen,dataClose) / pricingScale,marginPrice);
-        boolean bodySize = isWithinMargin(getOpenCloseDifference(mainOpen,mainClose),getOpenCloseDifference(testOpen,testClose) / pricingScale,marginPrice);
+
+        //This uses body size as the test, not the open/close positions themselves
+        //boolean bodySize1 = isWithinMargin(getOpenCloseDifference(mainOpen,mainClose),getOpenCloseDifference(testOpen,testClose) / pricingScale,marginPrice);
+
+        //This uses the open/close positions so they are more close and ignores garbage data. This basically REQUIRES price scaling to work
+        //boolean bodySize2 = isWithinMargin(mainOpen,testOpen / pricingScale,marginPrice) && isWithinMargin(mainClose,testClose / pricingScale,marginPrice);
+
+        //This tests if the open is price scaled and if the body size is correct. This causes price scaling while also keeping constant body size
+        //This is the best one so far. Most consistent with its probabilities
+        boolean bodySize3 = isWithinMargin(mainOpen,testOpen / pricingScale,marginPrice) && isWithinMargin(getOpenCloseDifference(mainOpen,mainClose),getOpenCloseDifference(testOpen,testClose),marginPrice);
+
+        //This tests if the open is price scaled and if the body size, scaled, is correct. This causes price scaling while also keeping constant body size
+        //boolean bodySize4 = isWithinMargin(mainOpen,testOpen / pricingScale,marginPrice) && isWithinMargin(getOpenCloseDifference(mainOpen,mainClose),getOpenCloseDifference(testOpen,testClose) / pricingScale,marginPrice);
+
+        boolean bodySize = bodySize3;
+        //TODO: Make make wicks have a much higher margin to avoid megawicks?
         boolean topWickSize;
         boolean bottomWickSize;
         if (ignoreWicks) {

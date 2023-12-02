@@ -34,11 +34,84 @@ public class RenderUtil {
         }
 
         DateTime openTime = endTime.equals(StockUtil.getAdjustedCurrentTime()) ? stock.getOpenTime() : endTime;
+
+        int currentCandles = 0;
+        int loopCount = 0;
+        while (currentCandles < candleCount) {
+            DateTime candleTime = new DateTime(openTime.getYear(),openTime.getMonth(), openTime.getDay(), openTime.getHour(), openTime.getMinute(),openTime.getSecond() - loopCount * stock.getTimeFrame().getSeconds());
+
+            if (!StockUtil.isPriceActive(stock.isExtendedHours(),candleTime)) {
+                loopCount++;
+                continue;
+            }
+
+            double x = scene.getSize().getX() - ((separation + candleWidth) * (currentCandles + 1)) * candleScale.getX();
+            if (!(x + 30 < 0 || x > scene.getSize().getX())) {
+
+                CandleUI historicalCandle = new CandleUI(stock, candleTime, x, focusY, focusPrice, candleWidth * candleScale.getX(), new Vector(1, candleScale.getY()));
+                listCandle.add(historicalCandle);
+
+                //For all MA indicators, add a point for each candle
+                for (int j = 0; j < maList.size(); j++) {
+                    Indicator indicator = indicators[j];
+                    double maY = focusY - (indicator.getCloseValue(candleTime) * candleScale.getY()) + focusPrice * candleScale.getY();
+                    if (indicator.getCloseValue(candleTime) != -1)
+                        list2DMApoints.get(j).add(new Vector(x + candleWidth / 2, maY));
+                }
+            }
+
+            currentCandles++;
+            loopCount++;
+        }
+
+        //Draw Candles
+        for (CandleUI candle : listCandle) {
+            candle.setGreen(new ColorE(0,255,255)).setRed(new ColorE(255,100,0)).setColorNull(new ColorE(255,0,255));
+            if (candle.getStock().getOpen(candle.getOpenTime()) != -1) candle.draw();
+        }
+
+        //Draw MA Lines
+        for (int i = 0; i < indicators.length; i++) {
+            Indicator ma = indicators[i];
+            ArrayList<Vector> points = list2DMApoints.get(i);
+            ColorE color = ma instanceof IndicatorEMA ? ColorE.YELLOW : ColorE.BLUE;
+            try {
+                new LineUI(color, LineUI.Type.PLAIN, 4d, points.toArray(new Vector[0])).draw();
+            } catch (Exception ignored) {
+            }
+        }
+
+        //Draw Tooltips - Done last as to make sure they are not covered by other candles or indicators
+        for (CandleUI candle : listCandle) {
+            if (candle.getStock().getOpen(candle.getOpenTime()) != -1) {
+                candle.tick(scene); //Update Mouse Over
+                if (candle.isMouseOver()) RenderUtil.drawCandleTooltip(candle, scene.getWindow().getScaledMousePos());
+            }
+        }
+    }
+
+    public static void drawStockDataOld(Scene scene, Stock stock, DateTime endTime, int candleCount, double focusPrice, double focusY, double separation, double candleWidth, Vector candleScale, Indicator... indicators) {
+        //Define Candle List
+        ArrayList<CandleUI> listCandle = new ArrayList<>();
+
+        //Define MA Lists
+        ArrayList<Indicator> maList = new ArrayList<>();
+        ArrayList<ArrayList<Vector>> list2DMApoints = new ArrayList<>();
+        for (Indicator indicator : indicators) {
+            if (indicator instanceof IndicatorEMA || indicator instanceof IndicatorSMA) {
+                maList.add(indicator);
+                list2DMApoints.add(new ArrayList<>());
+            }
+        }
+
+        DateTime openTime = endTime.equals(StockUtil.getAdjustedCurrentTime()) ? stock.getOpenTime() : endTime;
         try {
             for (int i = 0; i < candleCount; i++) {
+                DateTime candleTime = openTime.getAdded(-stock.getTimeFrame().getSeconds() * i);
+
                 double x = scene.getSize().getX() - ((separation + candleWidth) * (i + 1)) * candleScale.getX();
                 if (x + 30 < 0 || x > scene.getSize().getX()) continue;
-                DateTime candleTime = new DateTime(openTime.getYear(), openTime.getMonth(), openTime.getDay(), openTime.getHour(), openTime.getMinute(), openTime.getSecond() - stock.getTimeFrame().getSeconds() * i);
+
                 CandleUI historicalCandle = new CandleUI(stock, candleTime, x, focusY, focusPrice, candleWidth * candleScale.getX(), new Vector(1, candleScale.getY()));
                 listCandle.add(historicalCandle);
 
@@ -55,6 +128,7 @@ public class RenderUtil {
 
         //Draw Candles
         for (CandleUI candle : listCandle) {
+            candle.setGreen(new ColorE(0,255,255)).setRed(new ColorE(255,100,0)).setColorNull(new ColorE(255,0,255));
             if (candle.getStock().getOpen(candle.getOpenTime()) != -1) candle.draw();
         }
 
