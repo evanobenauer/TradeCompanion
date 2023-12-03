@@ -33,26 +33,22 @@ public class IndicatorEMA extends Indicator {
         double weight = (double) 2 / (getPeriod() + 1);
 
         int i = 1;
-        DateTime lastCandleTime = new DateTime(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond() - getStock().getTimeFrame().getSeconds() * i);
+        DateTime lastCandleTime = dateTime.getAdded( - getStock().getTimeFrame().getSeconds() * i);
         while (!StockUtil.isPriceActive(getStock().isExtendedHours(), lastCandleTime)) {
             i++;
-            lastCandleTime = new DateTime(lastCandleTime.getYear(), lastCandleTime.getMonth(), lastCandleTime.getDay(), lastCandleTime.getHour(), lastCandleTime.getMinute(), lastCandleTime.getSecond() - getStock().getTimeFrame().getSeconds() * i);
+            lastCandleTime = dateTime.getAdded( - getStock().getTimeFrame().getSeconds() * i);
         }
 
         double prevOpenEMA;
         double prevCloseEMA;
-        try {
-            float[] prevEMA = getData(lastCandleTime);
-            prevOpenEMA = prevEMA[0];
-            prevCloseEMA = prevEMA[1];
-            if (Double.isNaN(prevOpenEMA)) { //If the previous EMA does not exist, set this value to the current SMA
-                prevOpenEMA = equivalentSMA.calculateData(dateTime)[0];
-                prevCloseEMA = equivalentSMA.calculateData(dateTime)[1];
-            }
-        } catch (NullPointerException | NumberFormatException e) {
+        float[] prevEMA = getData(lastCandleTime);
+        prevOpenEMA = prevEMA[0];
+        prevCloseEMA = prevEMA[1];
+        if (prevOpenEMA == -1 || Double.isNaN(prevOpenEMA)) { //If the previous EMA does not exist, set this value to the current SMA
             prevOpenEMA = equivalentSMA.calculateData(dateTime)[0];
             prevCloseEMA = equivalentSMA.calculateData(dateTime)[1];
         }
+
         float openEMA = (float) MathE.roundDouble(open == -1 ? prevOpenEMA : open * weight + prevOpenEMA * (1 - weight), 4);
         float closeEMA = (float) MathE.roundDouble(close == -1 ? prevCloseEMA : close * weight + prevCloseEMA * (1 - weight), 4);
         getHistoricalData().put(dateTime.getDateTimeID(), new float[]{openEMA, closeEMA});

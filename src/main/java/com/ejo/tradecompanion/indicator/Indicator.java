@@ -82,7 +82,7 @@ public abstract class Indicator {
 
         int loopCount = 0;
         while (currentDateTime.getDateTimeID() < endCandleTime.getDateTimeID()) {
-            currentDateTime = new DateTime(startCandleTime.getYear(), startCandleTime.getMonth(), startCandleTime.getDay(), startCandleTime.getHour(), startCandleTime.getMinute(), startCandleTime.getSecond() + loopCount * getStock().getTimeFrame().getSeconds());
+            currentDateTime = startCandleTime.getAdded(loopCount * getStock().getTimeFrame().getSeconds());
 
             if (!StockUtil.isPriceActive(getStock().isExtendedHours(), currentDateTime)) {
                 loopCount++;

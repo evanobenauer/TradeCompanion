@@ -39,8 +39,7 @@ public class IndicatorSMA extends Indicator {
         int candleCount = 0;
         int loopCount = 0;
         while (candleCount < getPeriod()) {
-            DateTime nextDate = new DateTime(dateTime.getYear(),dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(),dateTime.getSecond() - loopCount * getStock().getTimeFrame().getSeconds());
-
+            DateTime nextDate = dateTime.getAdded(-loopCount * getStock().getTimeFrame().getSeconds());
             if (!StockUtil.isPriceActive(getStock().isExtendedHours(),nextDate)) {
                 loopCount++;
                 continue;
@@ -55,14 +54,6 @@ public class IndicatorSMA extends Indicator {
             candleCount++;
             loopCount++;
         }
-
-        //This code uses the previous SMA if there is a null price for the current dateTime. It is fairly useless
-        //float open = getStock().getOpen(dateTime);
-        //float close = getStock().getClose(dateTime);
-        //float prevOpenSMA = Float.parseFloat(getHistoricalData().get(dateTime.getDateTimeID())[0]);
-        //float prevCloseSMA = Float.parseFloat(getHistoricalData().get(dateTime.getDateTimeID())[1]);
-        //float openAvg = (float) MathE.roundDouble(open == -1 ? prevOpenSMA : calculateAverage(openAvgList),4);
-        //float closeAvg = (float) MathE.roundDouble(close == -1 ? prevCloseSMA : calculateAverage(closeAvgList),4);
 
         float openAvg = (float) MathE.roundDouble(calculateAverage(openAvgList),4);
         float closeAvg = (float) MathE.roundDouble(calculateAverage(closeAvgList),4);
