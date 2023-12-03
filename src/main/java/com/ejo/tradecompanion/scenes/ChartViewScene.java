@@ -3,6 +3,7 @@ package com.ejo.tradecompanion.scenes;
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowlib.math.VectorMod;
 import com.ejo.glowlib.misc.ColorE;
+import com.ejo.glowlib.misc.DoOnce;
 import com.ejo.glowlib.setting.Container;
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowui.scene.Scene;
@@ -12,6 +13,7 @@ import com.ejo.glowui.scene.elements.widget.ToggleUI;
 import com.ejo.glowui.util.Key;
 import com.ejo.glowui.util.Mouse;
 import com.ejo.stockdownloader.data.Stock;
+import com.ejo.stockdownloader.data.api.AlphaVantageDownloader;
 import com.ejo.stockdownloader.render.CandleUI;
 import com.ejo.stockdownloader.util.StockUtil;
 import com.ejo.tradecompanion.indicator.Indicator;
@@ -133,6 +135,12 @@ public class ChartViewScene extends Scene {
         super.onKeyPress(key, scancode, action, mods);
         if (key == Key.KEY_DOWN.getId()) candleScale.add(0,-2);
         if (key == Key.KEY_UP.getId()) candleScale.add(0,2);
+        if (key == Key.KEY_C.getId() && action == Key.ACTION_PRESS) {
+            AlphaVantageDownloader downloader = new AlphaVantageDownloader("H0JHAOU61I4MESDZ",false,getStock().getTicker(),getStock().getTimeFrame(),true);
+            downloader.download(StockUtil.getAdjustedCurrentTime().getYear(), StockUtil.getAdjustedCurrentTime().getMonth());
+            downloader.combineToLiveFile();
+            getStock().loadHistoricalData();
+        }
     }
 
 
@@ -174,6 +182,9 @@ public class ChartViewScene extends Scene {
         // When scale is very low, there is sometimes a skip when crossing days. The skip happens in factors of 8 hours. so it has to do something with the datetimeID difference not being proper
         // ^ I think the skip happens when you drag your mouse over a separate date line than that which dragPosTemp is dealing with. I think its doing a second skip when crossing twice
         // Weekends do not currently skip
+
+        //If you click and drag in small increments, it works fine. Maybe use this to your advantage?
+
         DateTime mainTime = startTime.getAdded((int) -(dragPosMain.getX()) * getStock().getTimeFrame().getSeconds());
         DateTime tempTime = startTime.getAdded((int) -(dragPosTemp.getX() + dragPosMain.getX()) * getStock().getTimeFrame().getSeconds());
 
