@@ -3,7 +3,6 @@ package com.ejo.tradecompanion.scenes;
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowlib.math.VectorMod;
 import com.ejo.glowlib.misc.ColorE;
-import com.ejo.glowlib.misc.DoOnce;
 import com.ejo.glowlib.setting.Container;
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowui.scene.Scene;
@@ -23,7 +22,6 @@ import com.ejo.tradecompanion.util.ProbabilityUtil;
 import com.ejo.tradecompanion.util.RenderUtil;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class ChartViewScene extends Scene {
 
@@ -54,8 +52,7 @@ public class ChartViewScene extends Scene {
 
     private boolean dragging = false;
     private Vector dragPosStart = Vector.NULL;
-    private VectorMod dragPosTemp = Vector.NULL.getMod();
-    private final VectorMod dragPosMain = Vector.NULL.getMod();
+    private final VectorMod dragPos = Vector.NULL.getMod();
 
     private ArrayList<CandleUI> candleList = new ArrayList<>();
 
@@ -110,6 +107,12 @@ public class ChartViewScene extends Scene {
     }
 
     @Override
+    public void onMouseScroll(int scroll, Vector mousePos) {
+        super.onMouseScroll(scroll, mousePos);
+        runScrollScaling(scroll);
+    }
+
+    @Override
     public void onMouseClick(int button, int action, int mods, Vector mousePos) {
         super.onMouseClick(button, action, mods, mousePos);
         updateDragToggle(button,action,mousePos);
@@ -122,12 +125,6 @@ public class ChartViewScene extends Scene {
                 }
             }
         }
-    }
-
-    @Override
-    public void onMouseScroll(int scroll, Vector mousePos) {
-        super.onMouseScroll(scroll, mousePos);
-        runScrollScaling(scroll);
     }
 
     @Override
@@ -167,27 +164,16 @@ public class ChartViewScene extends Scene {
             dragging = true;
         }
 
-        if (action == Mouse.ACTION_RELEASE) {
-            dragging = false;
-            dragPosMain.add(dragPosTemp);
-        }
+        if (action == Mouse.ACTION_RELEASE) dragging = false;
     }
 
     private void updateDrag() {
-        dragPosTemp = getWindow().getScaledMousePos().getSubtracted(dragPosStart).getMod();
+        VectorMod dragPosTemp = getWindow().getScaledMousePos().getSubtracted(dragPosStart).getMod();
         dragPosTemp.scale(1 / (candleScale.getX() * (defaultCandleSpace + defaultCandleWidth)), 1 / candleScale.getY());
 
-        //Time Skip over Close Gap
-        // Current Issues:
-        // When scale is very low, there is sometimes a skip when crossing days. The skip happens in factors of 8 hours. so it has to do something with the datetimeID difference not being proper
-        // ^ I think the skip happens when you drag your mouse over a separate date line than that which dragPosTemp is dealing with. I think its doing a second skip when crossing twice
-        // Weekends do not currently skip
-
-        //If you click and drag in small increments, it works fine. Maybe use this to your advantage?
-
-        DateTime mainTime = startTime.getAdded((int) -(dragPosMain.getX()) * getStock().getTimeFrame().getSeconds());
-        DateTime tempTime = startTime.getAdded((int) -(dragPosTemp.getX() + dragPosMain.getX()) * getStock().getTimeFrame().getSeconds());
-
+        //Skip over inactive stock hours; Weekends do not currently skip properly
+        DateTime mainTime = startTime.getAdded((int) -(dragPos.getX()) * getStock().getTimeFrame().getSeconds());
+        DateTime tempTime = startTime.getAdded((int) -(dragPosTemp.getX() + dragPos.getX()) * getStock().getTimeFrame().getSeconds());
         if (!StockUtil.isPriceActive(getStock().isExtendedHours(), tempTime)) {
             int seconds = (8 * 60 * 60) / getStock().getTimeFrame().getSeconds();
 
@@ -198,8 +184,12 @@ public class ChartViewScene extends Scene {
             }
         }
 
-        candleTimeOffset = (int) -(dragPosTemp.getX() + dragPosMain.getX());
-        candlePriceOffset = dragPosTemp.getY() + dragPosMain.getY();
+        dragPos.add(dragPosTemp);
+
+        candleTimeOffset = (int) -dragPos.getX();
+        candlePriceOffset = dragPos.getY();
+
+        dragPosStart = getWindow().getScaledMousePos();
     }
 
     private void runScrollScaling(int scroll) {
