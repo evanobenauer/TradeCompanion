@@ -19,17 +19,17 @@ import java.util.ArrayList;
 
 public class RenderUtil {
 
-    public static void drawStockData(Scene scene, Stock stock, DateTime endTime, int candleCount, double focusPrice, double focusY, double separation, double candleWidth, Vector candleScale, Indicator... indicators) {
+    public static ArrayList<CandleUI> drawStockData(Scene scene, Stock stock, DateTime endTime, int candleCount, double focusPrice, double focusY, double separation, double candleWidth, Vector candleScale, Indicator... indicators) {
         //Define Candle List
         ArrayList<CandleUI> listCandle = new ArrayList<>();
 
         //Define MA Lists
         ArrayList<Indicator> maList = new ArrayList<>();
-        ArrayList<ArrayList<Vector>> list2DMApoints = new ArrayList<>();
+        ArrayList<ArrayList<Vector>> listPointsMAs = new ArrayList<>();
         for (Indicator indicator : indicators) {
             if (indicator instanceof IndicatorEMA || indicator instanceof IndicatorSMA) {
                 maList.add(indicator);
-                list2DMApoints.add(new ArrayList<>());
+                listPointsMAs.add(new ArrayList<>());
             }
         }
 
@@ -38,9 +38,9 @@ public class RenderUtil {
         int currentCandles = 0;
         int loopCount = 0;
         while (currentCandles < candleCount) {
-            DateTime candleTime = new DateTime(openTime.getYear(),openTime.getMonth(), openTime.getDay(), openTime.getHour(), openTime.getMinute(),openTime.getSecond() - loopCount * stock.getTimeFrame().getSeconds());
+            DateTime candleTime = new DateTime(openTime.getYear(), openTime.getMonth(), openTime.getDay(), openTime.getHour(), openTime.getMinute(), openTime.getSecond() - loopCount * stock.getTimeFrame().getSeconds());
 
-            if (!StockUtil.isPriceActive(stock.isExtendedHours(),candleTime)) {
+            if (!StockUtil.isPriceActive(stock.isExtendedHours(), candleTime)) {
                 loopCount++;
                 continue;
             }
@@ -55,8 +55,10 @@ public class RenderUtil {
                 for (int j = 0; j < maList.size(); j++) {
                     Indicator indicator = indicators[j];
                     double maY = focusY - (indicator.getCloseValue(candleTime) * candleScale.getY()) + focusPrice * candleScale.getY();
-                    if (indicator.getCloseValue(candleTime) != -1)
-                        list2DMApoints.get(j).add(new Vector(x + candleWidth / 2, maY));
+                    if (indicator.getCloseValue(candleTime) != -1) {
+                        listPointsMAs.get(j).add(new Vector(x, maY));//TradingView uses this
+                        //listPointsMAs.get(j).add(new Vector(x + (candleWidth / 2), maY)); //This one is more akin to what is realistic
+                    }
                 }
             }
 
@@ -66,14 +68,14 @@ public class RenderUtil {
 
         //Draw Candles
         for (CandleUI candle : listCandle) {
-            candle.setGreen(new ColorE(0,255,255)).setRed(new ColorE(255,100,0)).setColorNull(new ColorE(255,0,255));
+            candle.setGreen(new ColorE(0, 255, 255)).setRed(new ColorE(255, 100, 0)).setColorNull(new ColorE(255, 0, 255));
             if (candle.getStock().getOpen(candle.getOpenTime()) != -1) candle.draw();
         }
 
         //Draw MA Lines
         for (int i = 0; i < indicators.length; i++) {
             Indicator ma = indicators[i];
-            ArrayList<Vector> points = list2DMApoints.get(i);
+            ArrayList<Vector> points = listPointsMAs.get(i);
             ColorE color = ma instanceof IndicatorEMA ? ColorE.YELLOW : ColorE.BLUE;
             try {
                 new LineUI(color, LineUI.Type.PLAIN, 4d, points.toArray(new Vector[0])).draw();
@@ -88,9 +90,10 @@ public class RenderUtil {
                 if (candle.isMouseOver()) RenderUtil.drawCandleTooltip(candle, scene.getWindow().getScaledMousePos());
             }
         }
+        return listCandle;
     }
 
-    public static void drawStockDataOld(Scene scene, Stock stock, DateTime endTime, int candleCount, double focusPrice, double focusY, double separation, double candleWidth, Vector candleScale, Indicator... indicators) {
+    public static void drawStockData(boolean oldMethodLol, Scene scene, Stock stock, DateTime endTime, int candleCount, double focusPrice, double focusY, double separation, double candleWidth, Vector candleScale, Indicator... indicators) {
         //Define Candle List
         ArrayList<CandleUI> listCandle = new ArrayList<>();
 
@@ -128,7 +131,7 @@ public class RenderUtil {
 
         //Draw Candles
         for (CandleUI candle : listCandle) {
-            candle.setGreen(new ColorE(0,255,255)).setRed(new ColorE(255,100,0)).setColorNull(new ColorE(255,0,255));
+            candle.setGreen(new ColorE(0, 255, 255)).setRed(new ColorE(255, 100, 0)).setColorNull(new ColorE(255, 0, 255));
             if (candle.getStock().getOpen(candle.getOpenTime()) != -1) candle.draw();
         }
 

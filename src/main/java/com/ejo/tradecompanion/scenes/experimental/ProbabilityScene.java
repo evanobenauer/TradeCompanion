@@ -3,6 +3,7 @@ package com.ejo.tradecompanion.scenes.experimental;
 import com.ejo.glowlib.math.MathE;
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowlib.misc.ColorE;
+import com.ejo.glowlib.setting.Container;
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowlib.time.StopWatch;
 import com.ejo.glowui.scene.Scene;
@@ -17,9 +18,11 @@ import com.ejo.stockdownloader.data.Stock;
 import com.ejo.stockdownloader.render.CandleUI;
 import com.ejo.stockdownloader.util.StockUtil;
 import com.ejo.stockdownloader.util.TimeFrame;
+import com.ejo.tradecompanion.util.ProbabilityUtil;
 import com.ejo.tradecompanion.util.RenderUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -188,200 +191,25 @@ public class ProbabilityScene extends Scene {
                 boolean includeAfterHours = false;
 
                 // ----------------------------------------------
-                ArrayList<ArrayList<Long>> biggie = new ArrayList<>();
-                biggie.add(getSimilarCandleIDs(stock, time, precision + precisionLooseness, priceScale,ignoreWicks,includeAfterHours));
+                ArrayList<ArrayList<Long>> similarResultsList = new ArrayList<>();
+                Container<float[]> results = new Container<>();
+
+                similarResultsList.add(ProbabilityUtil.getSimilarCandleIDs(stock, time, precision + precisionLooseness, priceScale,ignoreWicks,includeAfterHours,results));
+                System.out.println(Arrays.toString(results.get()));
                 precisionLooseness += precisionDecrease;
 
                 for (int l = 1; l <= lookbackAmount; l++) {
-                    biggie.add(filterSimilarCandlesFromPrevious(stock, time, precision + precisionLooseness, priceScale, ignoreWicks,includeAfterHours,biggie.get(l - 1), l));
+                    similarResultsList.add(ProbabilityUtil.filterSimilarCandlesFromPrevious(stock, time, precision + precisionLooseness, priceScale, ignoreWicks,includeAfterHours,similarResultsList.get(l - 1), l,results));
+                    System.out.println(Arrays.toString(results.get()));
+                    text.setText(results.get()[0] + "\\nGreen Probability: " + results.get()[1] + "%\\nRed Probability: " + results.get()[2] + "%" + "\\nAvg change in 3 Candles: $" + results.get()[3] + "; +: " + results.get()[4] + "%, -: " + results.get()[5] + "%");
                     precisionLooseness += precisionDecrease;
                 }
 
-                this.similarCandles = biggie.get(lookbackAmount);
+                this.similarCandles = similarResultsList.get(lookbackAmount);
             });
             thread.setDaemon(true);
             thread.start();
         }
 
-    }
-
-    //TODO: maybe add time of day & weekday probability
-    //TODO: Find a way to throw out garbage data from 2000-2003. It messes stuff up. Maybe just exclude it?
-    //TODO: Add previous calculation section back to the last 3 so they can be compared especially when working with live data
-    private ArrayList<Long> getSimilarCandleIDs(Stock stock, DateTime candleTime, float marginPrice, boolean doPriceScaling, boolean ignoreWicks, boolean includeAfterHours) {
-        ArrayList<Long> similarCandleList = new ArrayList<>();
-        int similarCandleCount = 0; //Maybe do something with this lol
-        int nextGreen = 0;
-        int nextRed = 0;
-        float avgCloseInThreeCandles = 0;
-
-        long mainID = candleTime.getDateTimeID();
-        float mainOpen = stock.getOpen(candleTime);
-        float mainClose = stock.getClose(candleTime);
-        float mainMin = stock.getMin(candleTime);
-        float mainMax = stock.getMax(candleTime);
-
-        //Maybe use this to avoid concurrent modification
-        //HashMap<Long,String[]> historicalData = (HashMap<Long, String[]>) stock.getHistoricalData().clone();
-
-        //This throws a concurrent modification exception
-        for (Map.Entry<Long, float[]> testData : stock.getHistoricalData().entrySet()) { //Loops through all stock data
-            if (testData.getKey() == mainID) continue;
-            if (!includeAfterHours && !StockUtil.isTradingHours(new DateTime(testData.getKey()))) continue;
-            if (testData.getKey() < 20040000000000L) continue;//TEMPORARY REMOVE EARLY DATA. IT SUCKS
-            float testOpen = testData.getValue()[0];
-            float testClose = testData.getValue()[1];
-            float testMin = testData.getValue()[2];
-            float testMax = testData.getValue()[3];
-
-            //This value scales based on the total cap of the stock over history so similarities have a chance
-            float pricingScale = doPriceScaling ? testOpen / mainOpen : 1;
-            if (areCandlesSimilar(new float[]{mainOpen,mainClose,mainMin,mainMax},new float[]{testOpen,testClose,testMin,testMax},marginPrice,pricingScale,ignoreWicks)) {
-                similarCandleList.add(testData.getKey());
-                DateTime thisTime = new DateTime(testData.getKey());
-                int offset = stock.getTimeFrame().getSeconds();
-                float[] data = stock.getData(thisTime.getAdded(offset));
-                if (data[1] > data[0]) nextGreen++;
-                if (data[1] < data[0]) nextRed++;
-                avgCloseInThreeCandles += stock.getClose(thisTime.getAdded(offset * 3)) - stock.getClose(thisTime);
-                similarCandleCount++;
-            }
-        }
-        if (similarCandleCount == 0) avgCloseInThreeCandles = 0;
-        else avgCloseInThreeCandles /= similarCandleCount;
-        avgCloseInThreeCandles = (float) MathE.roundDouble(avgCloseInThreeCandles,2);
-        System.out.println(similarCandleCount);
-        return similarCandleList;
-    }
-
-    private ArrayList<Long> filterSimilarCandlesFromPrevious(Stock stock, DateTime candleTime, float marginPrice, boolean doPriceScaling, boolean ignoreWicks, boolean includeAfterHours, ArrayList<Long> similarCandles, int previous) {
-        ArrayList<Long> similarCandleList = new ArrayList<>();
-        int similarCandleCount = 0; //Maybe do something with this lol
-        int nextGreen = 0;
-        int nextRed = 0;
-        int greenCloseInThreeCandles = 0;
-        int redCloseInThreeCandles = 0;
-        float avgCloseInThreeCandles = 0;
-
-        HashMap<Long, float[]> historicalData = stock.getHistoricalData();
-
-        DateTime prevCandleTime = candleTime.getAdded(-stock.getTimeFrame().getSeconds() * previous);
-        float prevMainOpen = stock.getOpen(prevCandleTime);
-        float prevMainClose = stock.getClose(prevCandleTime);
-        float prevMainMin = stock.getMin(prevCandleTime);
-        float prevMainMax = stock.getMax(prevCandleTime);
-
-        //Checks if the previous candle is similar also. This will filter out all who do not have a similar previous candle
-        for (Long id : similarCandles) {
-            Long prevID = new DateTime(id).getAdded(-stock.getTimeFrame().getSeconds() * previous).getDateTimeID();
-            if (!includeAfterHours && !StockUtil.isTradingHours(new DateTime(id))) continue;
-            try {
-                float prevTestOpen = historicalData.get(prevID)[0];
-                float prevTestClose = historicalData.get(prevID)[1];
-                float prevTestMain = historicalData.get(prevID)[2];
-                float prevTestMax = historicalData.get(prevID)[3];
-
-
-                float pricingScale = doPriceScaling ? prevTestOpen / prevMainOpen : 1;
-                if (areCandlesSimilar(new float[]{prevMainOpen, prevMainClose, prevMainMin, prevMainMax}, new float[]{prevTestOpen, prevTestClose, prevTestMain, prevTestMax}, marginPrice, pricingScale,ignoreWicks)) {
-                    similarCandleList.add(id);
-                    DateTime thisTime = new DateTime(id);
-                    int offset = stock.getTimeFrame().getSeconds();
-                    float[] data = stock.getData(thisTime.getAdded(offset));
-                    if (data[1] > data[0]) nextGreen++;
-                    if (data[1] < data[0]) nextRed++;
-                    float[] futureData = stock.getData(thisTime.getAdded(offset * 3));
-                    float thisClose = stock.getClose(thisTime);
-                    avgCloseInThreeCandles += futureData[1] - thisClose;
-                    if (futureData[1] > thisClose) greenCloseInThreeCandles++;
-                    if (futureData[1] < thisClose) redCloseInThreeCandles++;
-                    //More can be added here. Like nextNextNextGreen to look farther in the future based on the built pattern
-                    // You could also check what the live close price is a few candles ahead to see the average price chance over time
-                    similarCandleCount++;
-                }
-            } catch (Exception e) {
-                continue;
-            }
-        }
-        if (similarCandleCount == 0) avgCloseInThreeCandles = 0;
-        else avgCloseInThreeCandles /= similarCandleCount;
-        avgCloseInThreeCandles = (float) MathE.roundDouble(avgCloseInThreeCandles,2);
-        System.out.println(similarCandleCount);
-        text.setText(similarCandleCount + "\\nGreen Probability: " + MathE.roundDouble((double) nextGreen /similarCandleCount * 100,1) + "%\\nRed Probability: " + MathE.roundDouble((double) nextRed /similarCandleCount * 100,1) + "%" + "\\nAvg change in 3 Candles: $" + avgCloseInThreeCandles + "; +: " + MathE.roundDouble((double) greenCloseInThreeCandles /similarCandleCount * 100,1) + "%, -: " + MathE.roundDouble((double) redCloseInThreeCandles /similarCandleCount * 100,1) + "%");
-        return similarCandleList;
-    }
-
-
-    //TODO: Testing how candles are similar is the big challenge. Mess around with this more to get a good result
-    private boolean areCandlesSimilar(float[] mainData, float[] testData, float marginPrice, float pricingScale, boolean ignoreWicks) {
-        float mainOpen = mainData[0];
-        float mainClose = mainData[1];
-        float mainMin = mainData[2];
-        float mainMax = mainData[3];
-        float mainTopWick = getTopWickSize(mainMax,mainOpen,mainClose);
-        float mainBottomWick = getBottomWickSize(mainMin,mainOpen,mainClose);
-
-        float testOpen =  testData[0];
-        float testClose = testData[1];
-        float testMin = testData[2];
-        float testMax = testData[3];
-
-        //TODO: Maybe use a method that adds all the variation together into one total percent that has to be below a max percent
-        //TODO: since the data may cause candles to start at the wrong y pos, maybe add some sort of check for this?
-
-        //This uses body size as the test, not the open/close positions themselves
-        //boolean bodySize1 = isWithinMargin(getOpenCloseDifference(mainOpen,mainClose),getOpenCloseDifference(testOpen,testClose) / pricingScale,marginPrice);
-
-        //This uses the open/close positions so they are more close and ignores garbage data. This basically REQUIRES price scaling to work
-        //boolean bodySize2 = isWithinMargin(mainOpen,testOpen / pricingScale,marginPrice) && isWithinMargin(mainClose,testClose / pricingScale,marginPrice);
-
-        //This tests if the open is price scaled and if the body size is correct. This causes price scaling while also keeping constant body size
-        //This is the best one so far. Most consistent with its probabilities
-        boolean bodySize3 = isWithinMargin(mainOpen,testOpen / pricingScale,marginPrice) && isWithinMargin(getOpenCloseDifference(mainOpen,mainClose),getOpenCloseDifference(testOpen,testClose),marginPrice);
-
-        //This tests if the open is price scaled and if the body size, scaled, is correct. This causes price scaling while also keeping constant body size
-        //boolean bodySize4 = isWithinMargin(mainOpen,testOpen / pricingScale,marginPrice) && isWithinMargin(getOpenCloseDifference(mainOpen,mainClose),getOpenCloseDifference(testOpen,testClose) / pricingScale,marginPrice);
-
-        boolean bodySize = bodySize3;
-        //TODO: Make make wicks have a much higher margin to avoid megawicks?
-        boolean topWickSize;
-        boolean bottomWickSize;
-        if (ignoreWicks) {
-            topWickSize = true;
-            bottomWickSize = true;
-        } else {
-            topWickSize = isWithinMargin(mainTopWick, getTopWickSize(testMax,testOpen,testClose) / pricingScale,marginPrice);
-            bottomWickSize = isWithinMargin(mainBottomWick, getBottomWickSize(testMin,testOpen,testClose) / pricingScale,marginPrice);
-        }
-
-        if (ignoreWicks) {
-            return bodySize;
-        } else {
-            return bodySize && topWickSize && bottomWickSize;
-        }
-    }
-
-    //This is MUCH slower
-    private boolean areCandlesSimilar(Stock stock, DateTime mainTime, DateTime testTime, float marginPrice, float pricingScale) {
-        return areCandlesSimilar(
-                new float[]{stock.getOpen(mainTime),stock.getClose(mainTime),stock.getMin(mainTime),stock.getMax(mainTime)},
-                new float[]{stock.getOpen(testTime),stock.getClose(testTime),stock.getMin(testTime),stock.getMax(testTime)},
-                marginPrice,pricingScale,false);
-    }
-
-    private boolean isWithinMargin(float mainValue, float testValue, float margin) {
-        return (mainValue + margin >= testValue && mainValue - margin <= testValue);
-    }
-
-    private float getTopWickSize(float max, float open, float close) {
-        return getOpenCloseDifference(open,close) >= 0 ? max - close : max - open;
-    }
-
-    private float getBottomWickSize(float min, float open, float close) {
-        return getOpenCloseDifference(open,close) <= 0 ? close - min : open - min;
-    }
-
-    private float getOpenCloseDifference(float open, float close) {
-        return close - open;
     }
 }
