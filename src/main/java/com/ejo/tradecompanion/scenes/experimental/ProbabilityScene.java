@@ -186,6 +186,7 @@ public class ProbabilityScene extends Scene {
                 float precisionLooseness = 0;
                 float precisionDecrease = 0;//.005f;
                 int lookbackAmount = 4;
+                int lookForwardAmount = 3;
                 boolean priceScale = true;
                 boolean ignoreWicks = true;
                 boolean includeAfterHours = false;
@@ -194,12 +195,12 @@ public class ProbabilityScene extends Scene {
                 ArrayList<ArrayList<Long>> similarResultsList = new ArrayList<>();
                 Container<float[]> results = new Container<>();
 
-                similarResultsList.add(ProbabilityUtil.getSimilarCandleIDs(stock, time, precision + precisionLooseness, priceScale,ignoreWicks,includeAfterHours,results));
+                similarResultsList.add(ProbabilityUtil.getSimilarCandleIDs(stock, time, precision + precisionLooseness, priceScale,ignoreWicks,includeAfterHours,lookForwardAmount,results));
                 System.out.println(Arrays.toString(results.get()));
                 precisionLooseness += precisionDecrease;
 
                 for (int l = 1; l <= lookbackAmount; l++) {
-                    similarResultsList.add(ProbabilityUtil.filterSimilarCandlesFromPrevious(stock, time, precision + precisionLooseness, priceScale, ignoreWicks,includeAfterHours,similarResultsList.get(l - 1), l,results));
+                    similarResultsList.add(ProbabilityUtil.filterSimilarCandlesFromPrevious(stock, time, precision + precisionLooseness, priceScale, ignoreWicks,includeAfterHours,similarResultsList.get(l - 1), l,lookForwardAmount,results));
                     System.out.println(Arrays.toString(results.get()));
                     text.setText(results.get()[0] + "\\nGreen Probability: " + results.get()[1] + "%\\nRed Probability: " + results.get()[2] + "%" + "\\nAvg change in 3 Candles: $" + results.get()[3] + "; +: " + results.get()[4] + "%, -: " + results.get()[5] + "%");
                     precisionLooseness += precisionDecrease;

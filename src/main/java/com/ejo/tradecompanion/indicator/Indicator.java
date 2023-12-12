@@ -7,6 +7,7 @@ import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowlib.time.StopWatch;
 import com.ejo.stockdownloader.data.Stock;
 import com.ejo.stockdownloader.util.StockUtil;
+import com.ejo.stockdownloader.util.TimeUtil;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -89,7 +90,7 @@ public abstract class Indicator {
                 continue;
             }
 
-            getProgressContainer().set(getDateTimePercent(startCandleTime,currentDateTime,endCandleTime));
+            getProgressContainer().set(TimeUtil.getDateTimePercent(startCandleTime,currentDateTime,endCandleTime));
 
             calculateData(currentDateTime);
             loopCount++;
@@ -134,7 +135,7 @@ public abstract class Indicator {
 
                     rawMap.put(Long.parseLong(row[0]), floatRowCut);
                     currentRow += 1;
-                    getProgressContainer().set((double) (currentRow / fileSize));
+                    getProgressContainer().set((double) currentRow / fileSize);
                 }
             } catch (IOException | SecurityException e) {
                 e.printStackTrace();
@@ -176,7 +177,7 @@ public abstract class Indicator {
             for (Long key : hashMap.keySet()) {
                 writer.write(key + "," + Arrays.toString(hashMap.get(key)).replace("[","").replace("]","").replace(" ","") + "\n");
                 currentRow += 1;
-                getProgressContainer().set((double) (currentRow / fileSize));
+                getProgressContainer().set((double) currentRow / fileSize);
             }
             return true;
         } catch (IOException | SecurityException e) {
@@ -243,27 +244,6 @@ public abstract class Indicator {
 
     public Stock getStock() {
         return stock;
-    }
-
-
-    private static double getDateTimePercent(DateTime start, DateTime current, DateTime end) {
-        double year = current.getYear();
-        double yearDiff = end.getYear() - start.getYear();
-        double yearRange = 1 + yearDiff;
-
-        double month = current.getMonth();
-        double monthDiff = end.getMonth() - start.getMonth();
-        double monthRange = 1 + (year == end.getYear() ? monthDiff : 12);
-
-        double day = current.getDay();
-        double dayDiff = end.getDay() - start.getDay();
-        double dayRange = 1 + (month == end.getMonth() ? dayDiff : 31);
-
-        double yearPercent = (year - start.getYear()) / yearRange;
-        double monthPercent = (month - start.getMonth()) / monthRange / yearRange;
-        double dayPercent = (day - start.getDay()) / dayRange / monthRange / yearRange;
-
-        return yearPercent + monthPercent + dayPercent;
     }
 
     protected String getStockLabel() {

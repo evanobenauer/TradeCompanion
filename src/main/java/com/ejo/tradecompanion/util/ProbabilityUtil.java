@@ -17,7 +17,7 @@ public class ProbabilityUtil {
     //TODO: Add previous calculation section back to the last 3 so they can be compared especially when working with live data
 
 
-    public static ArrayList<Long> getSimilarCandleIDs(Stock stock, DateTime candleTime, float marginPrice, boolean doPriceScaling, boolean ignoreWicks, boolean includeAfterHours, Container<float[]> resultsContainer) {
+    public static ArrayList<Long> getSimilarCandleIDs(Stock stock, DateTime candleTime, float marginPrice, boolean doPriceScaling, boolean ignoreWicks, boolean includeAfterHours, int lookForwardAmount, Container<float[]> resultsContainer) {
         ArrayList<Long> similarCandleList = new ArrayList<>();
 
         int similarCandleCount = 0;
@@ -57,7 +57,7 @@ public class ProbabilityUtil {
                 if (nextData[1] < nextData[0]) nextRed++;
 
                 //Three Candles Data
-                float[] threeCandlesData = stock.getData(thisTime.getAdded(timeOffset * 3));
+                float[] threeCandlesData = stock.getData(thisTime.getAdded(timeOffset * lookForwardAmount));
                 float thisClose = stock.getClose(thisTime);
                 avgCloseInThreeCandles += threeCandlesData[1] - thisClose;
                 if (threeCandlesData[1] > thisClose) greenCloseInThreeCandles++;
@@ -77,7 +77,7 @@ public class ProbabilityUtil {
         return similarCandleList;
     }
 
-    public static ArrayList<Long> filterSimilarCandlesFromPrevious(Stock stock, DateTime candleTime, float marginPrice, boolean doPriceScaling, boolean ignoreWicks, boolean includeAfterHours, ArrayList<Long> similarCandles, int previous, Container<float[]> resultsContainer) {
+    public static ArrayList<Long> filterSimilarCandlesFromPrevious(Stock stock, DateTime candleTime, float marginPrice, boolean doPriceScaling, boolean ignoreWicks, boolean includeAfterHours, ArrayList<Long> similarCandles, int previous, int lookForwardAmount, Container<float[]> resultsContainer) {
         ArrayList<Long> similarCandleList = new ArrayList<>();
         HashMap<Long, float[]> historicalData = stock.getHistoricalData();
 
@@ -117,7 +117,7 @@ public class ProbabilityUtil {
                 if (nextData[1] < nextData[0]) nextRed++;
 
                 //Three Candles Data
-                float[] threeCandlesData = stock.getData(thisTime.getAdded(timeOffset * 3));
+                float[] threeCandlesData = stock.getData(thisTime.getAdded(timeOffset * lookForwardAmount));
                 float thisClose = stock.getClose(thisTime);
                 avgCloseInThreeCandles += threeCandlesData[1] - thisClose;
                 if (threeCandlesData[1] > thisClose) greenCloseInThreeCandles++;
@@ -174,10 +174,7 @@ public class ProbabilityUtil {
 
     //This is MUCH slower
     public static boolean areCandlesSimilar(Stock stock, DateTime mainTime, DateTime testTime, float marginPrice, boolean doPriceScaling) {
-        return areCandlesSimilar(
-                new float[]{stock.getOpen(mainTime), stock.getClose(mainTime), stock.getMin(mainTime), stock.getMax(mainTime)},
-                new float[]{stock.getOpen(testTime), stock.getClose(testTime), stock.getMin(testTime), stock.getMax(testTime)},
-                marginPrice, doPriceScaling, false);
+        return areCandlesSimilar(stock.getData(mainTime), stock.getData(testTime), marginPrice, doPriceScaling, false);
     }
 
     public static boolean isWithinMargin(float mainValue, float testValue, float margin) {
