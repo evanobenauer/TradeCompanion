@@ -180,33 +180,29 @@ public class ProbabilityScene extends Scene {
         if (key == Key.KEY_C.getId()) {
             Thread thread = new Thread(() -> {
                 DateTime time = this.time;
-                System.out.println("Starting calculation");
-                // -------------------------------------
+                System.out.println("---");
+                System.out.println("Starting Calculation for candle: " + time);
                 float precision = .03f; //Maybe try .02f
-                float precisionLooseness = 0;
-                float precisionDecrease = 0;//.005f;
-                int lookbackAmount = 4;
-                int lookForwardAmount = 3;
+                int lookBackAmount = 4;
+                int lookForwardAmount = 5;
                 boolean priceScale = true;
                 boolean ignoreWicks = true;
                 boolean includeAfterHours = false;
 
-                // ----------------------------------------------
                 ArrayList<ArrayList<Long>> similarResultsList = new ArrayList<>();
                 Container<float[]> results = new Container<>();
 
-                similarResultsList.add(ProbabilityUtil.getSimilarCandleIDs(stock, time, precision + precisionLooseness, priceScale,ignoreWicks,includeAfterHours,lookForwardAmount,results));
-                System.out.println(Arrays.toString(results.get()));
-                precisionLooseness += precisionDecrease;
+                similarResultsList.add(ProbabilityUtil.getSimilarCandleIDs(stock, time, precision, priceScale, ignoreWicks, includeAfterHours, lookForwardAmount, results));
+                System.out.println("---");
+                System.out.println(results.get()[0] + "\nGreen Probability: " + results.get()[1] + "%\nRed Probability: " + results.get()[2] + "%" + "\nAvg change in " + lookForwardAmount + " Candles: $" + results.get()[3] + "; +: " + results.get()[4] + "%, -: " + results.get()[5] + "%");
 
-                for (int l = 1; l <= lookbackAmount; l++) {
-                    similarResultsList.add(ProbabilityUtil.filterSimilarCandlesFromPrevious(stock, time, precision + precisionLooseness, priceScale, ignoreWicks,includeAfterHours,similarResultsList.get(l - 1), l,lookForwardAmount,results));
-                    System.out.println(Arrays.toString(results.get()));
+                for (int l = 1; l <= lookBackAmount; l++) {
+                    similarResultsList.add(ProbabilityUtil.filterSimilarCandlesFromPrevious(stock, time, precision, priceScale, ignoreWicks, includeAfterHours, similarResultsList.get(l - 1), l, lookForwardAmount, results));
+                    System.out.println("---");
+                    System.out.println(results.get()[0] + "\nGreen Probability: " + results.get()[1] + "%\nRed Probability: " + results.get()[2] + "%" + "\nAvg change in " + lookForwardAmount + " Candles: $" + results.get()[3] + "; +: " + results.get()[4] + "%, -: " + results.get()[5] + "%");
                     text.setText(results.get()[0] + "\\nGreen Probability: " + results.get()[1] + "%\\nRed Probability: " + results.get()[2] + "%" + "\\nAvg change in 3 Candles: $" + results.get()[3] + "; +: " + results.get()[4] + "%, -: " + results.get()[5] + "%");
-                    precisionLooseness += precisionDecrease;
                 }
-
-                this.similarCandles = similarResultsList.get(lookbackAmount);
+                this.similarCandles = similarResultsList.get(lookBackAmount);;
             });
             thread.setDaemon(true);
             thread.start();

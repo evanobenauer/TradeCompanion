@@ -18,6 +18,8 @@ public class ProbabilityUtil {
 
 
     public static ArrayList<Long> getSimilarCandleIDs(Stock stock, DateTime candleTime, float marginPrice, boolean doPriceScaling, boolean ignoreWicks, boolean includeAfterHours, int lookForwardAmount, Container<float[]> resultsContainer) {
+        DateTime runTime = DateTime.getCurrentDateTime();
+
         ArrayList<Long> similarCandleList = new ArrayList<>();
 
         int similarCandleCount = 0;
@@ -72,12 +74,16 @@ public class ProbabilityUtil {
         else avgCloseInThreeCandles /= similarCandleCount;
         avgCloseInThreeCandles = (float) MathE.roundDouble(avgCloseInThreeCandles, 2);
 
-        resultsContainer.set(new float[]{similarCandleCount, (float) MathE.roundDouble((double) nextGreen / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) nextRed / similarCandleCount * 100, 1), avgCloseInThreeCandles, (float) MathE.roundDouble((double) greenCloseInThreeCandles / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) redCloseInThreeCandles / similarCandleCount * 100, 1)});
+        DateTime endTime = DateTime.getCurrentDateTime();
+
+        resultsContainer.set(new float[]{similarCandleCount, (float) MathE.roundDouble((double) nextGreen / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) nextRed / similarCandleCount * 100, 1), avgCloseInThreeCandles, (float) MathE.roundDouble((double) greenCloseInThreeCandles / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) redCloseInThreeCandles / similarCandleCount * 100, 1),(float) (endTime.getCalendar().getTimeInMillis() - runTime.getCalendar().getTimeInMillis()) / 1000});
 
         return similarCandleList;
     }
 
     public static ArrayList<Long> filterSimilarCandlesFromPrevious(Stock stock, DateTime candleTime, float marginPrice, boolean doPriceScaling, boolean ignoreWicks, boolean includeAfterHours, ArrayList<Long> similarCandles, int previous, int lookForwardAmount, Container<float[]> resultsContainer) {
+        DateTime runTime = DateTime.getCurrentDateTime();
+
         ArrayList<Long> similarCandleList = new ArrayList<>();
         HashMap<Long, float[]> historicalData = stock.getHistoricalData();
 
@@ -135,7 +141,9 @@ public class ProbabilityUtil {
         else avgCloseInThreeCandles /= similarCandleCount;
         avgCloseInThreeCandles = (float) MathE.roundDouble(avgCloseInThreeCandles, 2);
 
-        resultsContainer.set(new float[]{similarCandleCount, (float) MathE.roundDouble((double) nextGreen / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) nextRed / similarCandleCount * 100, 1), avgCloseInThreeCandles, (float) MathE.roundDouble((double) greenCloseInThreeCandles / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) redCloseInThreeCandles / similarCandleCount * 100, 1)});
+        DateTime endTime = DateTime.getCurrentDateTime();
+
+        resultsContainer.set(new float[]{similarCandleCount, (float) MathE.roundDouble((double) nextGreen / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) nextRed / similarCandleCount * 100, 1), avgCloseInThreeCandles, (float) MathE.roundDouble((double) greenCloseInThreeCandles / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) redCloseInThreeCandles / similarCandleCount * 100, 1), (float) (endTime.getCalendar().getTimeInMillis() - runTime.getCalendar().getTimeInMillis()) / 1000});
 
         return similarCandleList;
     }
@@ -160,12 +168,16 @@ public class ProbabilityUtil {
         //TODO: Maybe use a method that adds all the variation together into one total percent that has to be below a max percent
         //TODO: since the data may cause candles to start at the wrong y pos, maybe add some sort of check for this?
 
-        boolean bodySize = isWithinMargin(mainOpen,testOpen / pricingScale,marginPrice) && isWithinMargin(getOpenCloseDifference(mainOpen,mainClose),getOpenCloseDifference(testOpen,testClose),marginPrice);
+        //This compares the scaled test open price with the main price AND the body size. This may cause no difference
+        //boolean bodySize = isWithinMargin(mainOpen,testOpen / pricingScale,marginPrice) && isWithinMargin(getOpenCloseDifference(mainOpen,mainClose),getOpenCloseDifference(testOpen,testClose),marginPrice);
+
+        //This compares the body size
+        boolean bodySize = isWithinMargin(getOpenCloseDifference(mainOpen,mainClose),getOpenCloseDifference(testOpen,testClose) / pricingScale,marginPrice);
 
         if (ignoreWicks) {
             return bodySize;
         } else {
-            //TODO: Make make wicks have a much higher margin to avoid megawicks?
+            //TODO: To include wicks, Make make wicks have a much higher margin to avoid megawicks?
             boolean topWickSize = isWithinMargin(mainTopWick, getTopWickSize(testMax, testOpen, testClose) / pricingScale, marginPrice);
             boolean bottomWickSize = isWithinMargin(mainBottomWick, getBottomWickSize(testMin, testOpen, testClose) / pricingScale, marginPrice);
             return bodySize && topWickSize && bottomWickSize;

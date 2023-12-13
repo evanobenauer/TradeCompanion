@@ -35,8 +35,9 @@ public abstract class Indicator {
     protected boolean progressActive = false;
 
 
-    public Indicator(Stock stock) {
+    public Indicator(Stock stock, boolean loadOnInstantiation) {
         this.stock = stock;
+        if (loadOnInstantiation) loadHistoricalData();
     }
 
     /**
@@ -179,6 +180,7 @@ public abstract class Indicator {
                 currentRow += 1;
                 getProgressContainer().set((double) currentRow / fileSize);
             }
+            this.progressActive = false;
             return true;
         } catch (IOException | SecurityException e) {
             e.printStackTrace();

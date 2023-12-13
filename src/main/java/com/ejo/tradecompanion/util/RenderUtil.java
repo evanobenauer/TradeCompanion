@@ -19,10 +19,7 @@ import java.util.ArrayList;
 
 public class RenderUtil {
 
-    public static ArrayList<CandleUI> drawStockData(Scene scene, Stock stock, DateTime endTime, int candleCount, double focusPrice, double focusY, double separation, double candleWidth, Vector candleScale, Indicator... indicators) {
-        //Define Candle List
-        ArrayList<CandleUI> listCandle = new ArrayList<>();
-
+    public static void drawCandlesFromData(ArrayList<CandleUI> listCandle, Indicator... indicators) {
         //Define MA Lists
         ArrayList<Indicator> maList = new ArrayList<>();
         ArrayList<ArrayList<Vector>> listPointsMAs = new ArrayList<>();
@@ -33,44 +30,21 @@ public class RenderUtil {
             }
         }
 
-        DateTime openTime = endTime.equals(StockUtil.getAdjustedCurrentTime()) ? stock.getOpenTime() : endTime;
-
-        int currentCandles = 0;
-        int loopCount = 0;
-        while (currentCandles < candleCount) {
-            DateTime candleTime = openTime.getAdded(-loopCount * stock.getTimeFrame().getSeconds());
-            
-            if (!StockUtil.isPriceActive(stock.isExtendedHours(), candleTime)) {
-                loopCount++;
-                continue;
-            }
-
-            double x = scene.getSize().getX() - ((separation + candleWidth) * (currentCandles + 1)) * candleScale.getX();
-            if (!(x + 30 < 0 || x > scene.getSize().getX())) {
-
-                CandleUI historicalCandle = new CandleUI(stock, candleTime, x, focusY, focusPrice, candleWidth * candleScale.getX(), new Vector(1, candleScale.getY()));
-                listCandle.add(historicalCandle);
-
-                //For all MA indicators, add a point for each candle
-                for (int j = 0; j < maList.size(); j++) {
-                    Indicator indicator = indicators[j];
-                    double maY = focusY - (indicator.getCloseValue(candleTime) * candleScale.getY()) + focusPrice * candleScale.getY();
-                    if (indicator.getCloseValue(candleTime) != -1) {
-
-                        //This is a little buggy for some reason
-                        listPointsMAs.get(j).add(new Vector(x + (candleWidth / 2), maY)); //This one is more akin to what is realistic
-                    }
-                }
-            }
-
-            currentCandles++;
-            loopCount++;
-        }
-
         //Draw Candles
         for (CandleUI candle : listCandle) {
             candle.setGreen(new ColorE(0, 255, 255)).setRed(new ColorE(255, 100, 0)).setColorNull(new ColorE(255, 0, 255));
             if (candle.getStock().getOpen(candle.getOpenTime()) != -1) candle.draw();
+
+            //For all MA indicators, add a point for each candle
+            for (int j = 0; j < maList.size(); j++) {
+                Indicator indicator = indicators[j];
+                double maY = candle.getFocusY() - (indicator.getCloseValue(candle.getOpenTime()) * candle.getScale().getY()) + candle.getFocusPrice() * candle.getScale().getY();
+                if (indicator.getCloseValue(candle.getOpenTime()) != -1) {
+
+                    //This is a little buggy for some reason
+                    listPointsMAs.get(j).add(new Vector(candle.getPos().getX() + (candle.getBodySize().getX() / 2), maY)); //This one is more akin to what is realistic
+                }
+            }
         }
 
         //Draw MA Lines
@@ -84,18 +58,6 @@ public class RenderUtil {
             }
         }
 
-        //Draw Tooltips - Done last as to make sure they are not covered by other candles or indicators
-        //TODO: replace the tooltip with clicking on a candle to get its info
-        /*
-        for (CandleUI candle : listCandle) {
-            if (candle.getStock().getOpen(candle.getOpenTime()) != -1) {
-                candle.tick(scene); //Update Mouse Over
-                if (candle.isMouseOver()) RenderUtil.drawCandleTooltip(candle, scene.getWindow().getScaledMousePos());
-            }
-        }
-        //*/
-
-        return listCandle;
     }
 
     public static void drawCandleTooltip(CandleUI candle, Vector mousePos) {

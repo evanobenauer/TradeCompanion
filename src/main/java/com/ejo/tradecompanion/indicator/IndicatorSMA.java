@@ -15,7 +15,7 @@ public class IndicatorSMA extends Indicator {
     private DateTime currentCalculationDate;
 
     public IndicatorSMA(Stock stock, int period) {
-        super(stock);
+        super(stock,false);
         this.period = period;
     }
 

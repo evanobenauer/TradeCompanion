@@ -2,10 +2,7 @@ package com.ejo.tradecompanion;
 
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowui.Window;
-import com.ejo.stockdownloader.data.Stock;
-import com.ejo.stockdownloader.util.TimeFrame;
-import com.ejo.tradecompanion.scenes.ChartViewScene;
-import com.ejo.tradecompanion.scenes.experimental.ProbabilityScene;
+import com.ejo.tradecompanion.scenes.TitleScene;
 
 public class App {
 
@@ -17,9 +14,7 @@ public class App {
             "Trade Companion",
             new Vector(100,100),
             new Vector(1200,800),
-            new ChartViewScene(new Stock("SPY", TimeFrame.ONE_MINUTE,true, Stock.PriceSource.MARKETWATCH)),
-            //new TestScene(),
-            //new ProbabilityScene(),
+            new TitleScene(),
             true, 4, 60, 60
     );
 
