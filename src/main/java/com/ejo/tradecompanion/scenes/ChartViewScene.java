@@ -5,6 +5,8 @@ import com.ejo.glowlib.math.Vector;
 import com.ejo.glowlib.math.VectorMod;
 import com.ejo.glowlib.misc.ColorE;
 import com.ejo.glowlib.setting.Container;
+import com.ejo.glowlib.setting.Setting;
+import com.ejo.glowlib.setting.SettingManager;
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowui.scene.Scene;
 import com.ejo.glowui.scene.elements.ProgressBarUI;
@@ -24,6 +26,7 @@ import com.ejo.stockdownloader.util.StockUtil;
 import com.ejo.tradecompanion.indicator.Indicator;
 import com.ejo.tradecompanion.indicator.IndicatorEMA;
 import com.ejo.tradecompanion.indicator.IndicatorSMA;
+import com.ejo.tradecompanion.util.ChartUtil;
 import com.ejo.tradecompanion.util.ProbabilityUtil;
 import com.ejo.tradecompanion.util.RenderUtil;
 
@@ -31,121 +34,120 @@ import java.util.ArrayList;
 
 public class ChartViewScene extends Scene {
 
-    private static final ColorE WIDGET_COLOR = new ColorE(0, 160, 160);
+    //Define Stock (If the stock needs to be changed, switch to a new scene)
+    private final Stock stock;
 
-    private final Stock stock; //If the stock needs to be changed, switch to a new scene
+    //Value Lists
+    private ArrayList<CandleUI> candleList = new ArrayList<>();
+    private final ArrayList<Indicator> listIndicator = new ArrayList<>();
 
-    private final IndicatorEMA ema;
-    private final IndicatorSMA sma;
+    //Define Settings
+    private final SettingManager settingManager;
 
+    private final Setting<DateTime> chartTime;
+    private final Setting<Float> chartFocusPrice;
+    private final Setting<Vector> candleScale;
 
-    //TODO: Add toggle to update EMA/SMA live AND add a full calculation menu with date ranges
-    private final ToggleUI toggleEMA = new ToggleUI("EMA", new Vector(30, 30), new Vector(100, 25), WIDGET_COLOR, new Container<>(false));
-    private final ToggleUI toggleSMA = new ToggleUI("SMA", new Vector(30, 30 + 30 + 5), new Vector(100, 25), WIDGET_COLOR, new Container<>(false));
+    //Candle Dimensions
+    private final double candleWidth;
+    private final double candleSeparation;
 
-    private final SideBarUI sidebar = new SideBarUI(SideBarUI.Type.TOP, 120, true, WIDGET_COLOR.alpha(120), toggleEMA, toggleSMA);
-
-    private final ProgressBarUI<Double> progressBarClosePercent = new ProgressBarUI<Double>(Vector.NULL, new Vector(100, 30), ColorE.BLUE, new Container<>(0d), 0, 1);
-
-
-    private DateTime chartStartTime;
-    private final float startPrice;
-
-    private int candleTimeOffset = 0;
-    private double candlePriceOffset = 0;
-
-    private final double defaultCandleWidth = 30;
-    private final double defaultCandleSpace = 4;
-    private final VectorMod candleScale = new VectorMod(1, 200);
-
+    //Dragging Variables
     private boolean dragging = false;
-    private DateTime dragTimeGrab;
+    private final VectorMod dragPos = Vector.NULL.getMod();
     private VectorMod dragPosTemp;
     private Vector dragPosPre;
-    private final VectorMod dragPos = Vector.NULL.getMod();
+    private final float focusPricePre;
+    private Vector candleScalePre;
+    private DateTime dragTimeGrab;
 
-    private ArrayList<CandleUI> candleList = new ArrayList<>();
+    //Sidebar Elements
+    //Add a separate EMA and SMA menu for each that allows you to select which periods you want and calculate them based on date ranges
+    private final ToggleUI toggleEMA = new ToggleUI("EMA", new Vector(30, 30), new Vector(100, 25), ChartUtil.WIDGET_COLOR, new Container<>(false));
+    private final ToggleUI toggleSMA = new ToggleUI("SMA", new Vector(30, 30 + 30 + 5), new Vector(100, 25), ChartUtil.WIDGET_COLOR, new Container<>(false));
+
+    private final SideBarUI topBar = new SideBarUI(SideBarUI.Type.TOP, 120, true, ChartUtil.WIDGET_COLOR.alpha(120), toggleEMA, toggleSMA);
 
 
     public ChartViewScene(Stock stock) {
         super("Chart Viewer");
         this.stock = stock;
-        this.chartStartTime = new DateTime(2023, 11, 30, 10, 0);
-        this.startPrice = getStock().getClose(chartStartTime);
+        this.settingManager = new SettingManager("setting",getStock().getTicker() + "_" + getStock().getTimeFrame().getTag() + "-settings");
+
+        //Set Default Setting Values
+        this.chartTime = new Setting<>(settingManager,"chartTime",new DateTime(2023, 11, 30, 10, 0));
+        this.chartFocusPrice = new Setting<>(settingManager,"chartFocusPrice",getStock().getClose(chartTime.get()));
+        this.candleScale = new Setting<>(settingManager,"chartCandleScale",new VectorMod(1,200));
+
+        //Load Settings
+        settingManager.loadAll();
+
+        //Set Default Values
+        this.focusPricePre = chartFocusPrice.get();
+        this.candleWidth = 30;
+        this.candleSeparation = 4;
 
         // ----------------- Temporary Data ------------------
-        this.ema = new IndicatorEMA(stock, 50);
-        this.sma = new IndicatorSMA(stock, 50);
+        IndicatorEMA ema = new IndicatorEMA(stock, 50);
+        IndicatorSMA sma = new IndicatorSMA(stock, 50);
 
         ema.loadHistoricalData(); //TODO: make sure to not include loading in constructor in future
         sma.loadHistoricalData();
 
-        progressBarClosePercent.setContainer(stock.getClosePercent());
+        listIndicator.add(ema);
+        listIndicator.add(sma);
 
         // --------------------------------------------------
 
-        startStockUpdateThread();
-        addElements(sidebar, progressBarClosePercent);
+        addElements(topBar);
+
+        runStockUpdateThread();
     }
 
-    //TODO: Daily candles have issues rendering
 
     @Override
     public void draw() {
-        progressBarClosePercent.setPos(new Vector(getSize().getX() - progressBarClosePercent.getSize().getX(), getSize().getY() - progressBarClosePercent.getSize().getY()));
-        new GradientRectangleUI(Vector.NULL, getSize(), new ColorE(0, 255, 255).alpha(20), new ColorE(0, 0, 0), GradientRectangleUI.Type.VERTICAL).draw();
-
+        //TODO: Daily candles have issues rendering
         //TODO: Draw arrow indicator if the candle price is below or above the focusPrice and off screen
 
-        double focusY = getSize().getY() / 2;
-        double focusPrice = candlePriceOffset + startPrice;
+        //Draw Gradient Background
+        new GradientRectangleUI(Vector.NULL, getSize(), new ColorE(0, 255, 255).alpha(20), new ColorE(0, 0, 0), GradientRectangleUI.Type.VERTICAL).draw();
 
-        ArrayList<Indicator> indicatorsList = new ArrayList<>();
-        if (toggleEMA.getContainer().get()) indicatorsList.add(ema);
-        if (toggleSMA.getContainer().get()) indicatorsList.add(sma);
+        //Draw Candles & Indicators
+        ArrayList<Indicator> renderIndicators = new ArrayList<>();
+        for (Indicator indicator : listIndicator) {
+            if (toggleEMA.getContainer().get() && indicator instanceof IndicatorEMA) renderIndicators.add(indicator);
+            if (toggleSMA.getContainer().get() && indicator instanceof IndicatorSMA) renderIndicators.add(indicator);
+        }
+        RenderUtil.drawCandlesFromData(candleList, renderIndicators.toArray(new Indicator[0]));
 
-        Indicator[] indicators = indicatorsList.toArray(new Indicator[0]);
-        RenderUtil.drawCandlesFromData(candleList, indicators);
+        //Draw Close Percent Progress Bar
+        ProgressBarUI<Double> progressBarClosePercent = new ProgressBarUI<>(Vector.NULL, new Vector(100, 30), ColorE.BLUE, getStock().getClosePercent(), 0, 1);
+        progressBarClosePercent.setPos(new Vector(getSize().getX() - progressBarClosePercent.getSize().getX(), getSize().getY() - progressBarClosePercent.getSize().getY()));
+        progressBarClosePercent.draw();
 
         super.draw();
 
-        //Draw Vertical Candle Line
-        for (CandleUI candle : candleList) {
-            if (isHoveredHorizontally(candle, getWindow().getScaledMousePos())) {
-                LineUI line = new LineUI(new Vector(candle.getPos().getX() + candle.getWidth() / 2, 0), new Vector(candle.getPos().getX() + candle.getWidth() / 2, getSize().getY()), ColorE.WHITE, LineUI.Type.DOTTED, 1);
-                line.draw();
-                QuickDraw.drawTextCentered(String.valueOf(candle.getOpenTime()), Fonts.getDefaultFont(24), Vector.NULL.getAdded(candle.getPos().getX() + candle.getWidth() / 2, getSize().getY() - 12), Vector.NULL, ColorE.WHITE);
-            }
-        }
-
-        //Draw Horizontal Price Line
-        LineUI line = new LineUI(new Vector(0, getWindow().getScaledMousePos().getY()), new Vector(getSize().getX(), getWindow().getScaledMousePos().getY()), ColorE.WHITE, LineUI.Type.DOTTED, 1);
-        line.draw();
-        double yPrice = (focusY - getWindow().getScaledMousePos().getY()) / candleScale.getY() + focusPrice;
-        TextUI text = new TextUI(String.valueOf(MathE.roundDouble(yPrice, 2)), Fonts.getDefaultFont(25), Vector.NULL, ColorE.WHITE);
-        text.setPos(new Vector(getSize().getX() - text.getWidth() - 2, getWindow().getScaledMousePos().getY() - text.getHeight() / 2));
-        text.draw();
-        tempDrawDebugElements();
-
+        drawCrossHair();
     }
 
     @Override
     public void tick() {
         super.tick();
-
-        double focusY = getSize().getY() / 2;
-        double focusPrice = candlePriceOffset + startPrice;
-        this.candleList = getOnScreenCandles(this, getStock(), chartStartTime, (int) (getSize().getX() / (candleScale.getX() * (defaultCandleWidth + defaultCandleSpace))), focusPrice, focusY, defaultCandleSpace, defaultCandleWidth, candleScale);
-        if (dragging) updateDrag();
-
         getStock().updateLiveData();
-        if (dragging) updateDragPriceScale();
+
+        this.candleList = ChartUtil.getOnScreenCandles(this, getStock(), chartTime.get(), (int) (getSize().getX() / (candleScale.get().getX() * (candleWidth + candleSeparation))), chartFocusPrice.get(), getSize().getY() / 2, candleSeparation, candleWidth, candleScale.get());
+
+        if (dragging) {
+            updateDragPosition();
+            updateDragPriceScale();
+        }
     }
 
     @Override
     public void onMouseScroll(int scroll, Vector mousePos) {
         super.onMouseScroll(scroll, mousePos);
-        runScrollScaling(scroll);
+        updateScrollScaling(scroll);
     }
 
     @Override
@@ -154,15 +156,8 @@ public class ChartViewScene extends Scene {
         updateDragMouseToggle(button, action, mousePos);
 
         //TODO: Display a menu for each timeframe when a candle is clicked
-        if (button == Mouse.BUTTON_LEFT.getId() && action == Mouse.ACTION_CLICK && Key.isControlDown()) {
-            for (CandleUI candle : candleList) {
-                if (isHoveredHorizontally(candle, mousePos)) {
-                    Thread thread = new Thread(() -> tempCalculateProbability(candle.getOpenTime()));
-                    thread.setDaemon(true);
-                    thread.start();
-                }
-            }
-        }
+
+        tempDebugMouse(button, action, mods, mousePos);
     }
 
     @Override
@@ -170,23 +165,22 @@ public class ChartViewScene extends Scene {
         super.onKeyPress(key, scancode, action, mods);
         if (action == Key.ACTION_RELEASE) return;
         if (key == Key.KEY_ESC.getId()) getWindow().setScene(new TitleScene());
-        tempKeyDebug(key);
+        tempDebugKey(key);
     }
 
 
-    private void startStockUpdateThread() {
+    private void runStockUpdateThread() {
         Thread stockUpdateThread = new Thread(() -> {
             while (true) {
-                stock.updateLivePrice(.5);
-                if (stock.getOpenTime() != null) {
-                    ema.calculateData(stock.getOpenTime());
-                    sma.calculateData(stock.getOpenTime());
-                }
                 try {
                     Thread.sleep(1);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
+                getStock().updateLivePrice(.5);
+                if (getStock().getOpenTime() == null) return;
+                for (Indicator indicator : listIndicator)
+                    indicator.calculateData(getStock().getOpenTime());
             }
         });
         stockUpdateThread.setDaemon(true);
@@ -194,50 +188,56 @@ public class ChartViewScene extends Scene {
         stockUpdateThread.start();
     }
 
+    private void drawCrossHair() {
+        //Draw Vertical Candle Line
+        for (CandleUI candle : candleList) {
+            if (ChartUtil.isHoveredHorizontally(candle, candleSeparation, getWindow().getScaledMousePos())) {
+                LineUI line = new LineUI(new Vector(candle.getPos().getX() + candle.getWidth() / 2, 0), new Vector(candle.getPos().getX() + candle.getWidth() / 2, getSize().getY()), ColorE.WHITE, LineUI.Type.DOTTED, 1);
+                line.draw();
+                QuickDraw.drawTextCentered(String.valueOf(candle.getOpenTime()), Fonts.getDefaultFont(24), Vector.NULL.getAdded(candle.getPos().getX() + candle.getWidth() / 2, getSize().getY() - 12), Vector.NULL, ColorE.WHITE);
+                break;
+            }
+        }
+
+        //Draw Horizontal Price Line
+        LineUI line = new LineUI(new Vector(0, getWindow().getScaledMousePos().getY()), new Vector(getSize().getX(), getWindow().getScaledMousePos().getY()), ColorE.WHITE, LineUI.Type.DOTTED, 1);
+        line.draw();
+        double yPrice = (getSize().getY() / 2 - getWindow().getScaledMousePos().getY()) / candleScale.get().getY() + chartFocusPrice.get();
+        TextUI text = new TextUI(String.valueOf(MathE.roundDouble(yPrice, 2)), Fonts.getDefaultFont(25), Vector.NULL, ColorE.WHITE);
+        text.setPos(new Vector(getSize().getX() - text.getWidth() - 2, getWindow().getScaledMousePos().getY() - text.getHeight() / 2));
+        text.draw();
+
+        tempDebugDraw();
+    }
+
     private void updateDragMouseToggle(int button, int action, Vector mousePos) {
-        if (button != Mouse.BUTTON_LEFT.getId()) return;
+        if (topBar.isMouseOver()) return;
         if (action == Mouse.ACTION_CLICK) {
+            this.dragTimeGrab = null;
             for (CandleUI candle : candleList) {
-                if (isHoveredHorizontally(candle, mousePos)) {
-                    dragTimeGrab = candle.getOpenTime(); //Maybe just make this set the specific candle object?
+                if (ChartUtil.isHoveredHorizontally(candle, candleSeparation, mousePos)) {
+                    this.dragTimeGrab = candle.getOpenTime(); //Maybe just make this set the specific candle object?
                     break;
                 }
-                dragTimeGrab = null;
             }
-            candleScalePre = candleScale;
-            dragPosPre = mousePos;
-            dragging = true;
+            this.candleScalePre = candleScale.get();
+            this.dragPosPre = mousePos;
+            this.dragging = true;
         }
 
         if (action == Mouse.ACTION_RELEASE) {
-            dragging = false;
-            dragPos.add(dragPosTemp);
+            this.dragging = false;
+            this.dragPos.add(dragPosTemp);
         }
     }
 
-    VectorMod candleScalePre;
+    private void updateDragPosition() {
+        if (Mouse.BUTTON_RIGHT.isButtonDown()) return;
 
-    private void updateDragPriceScale() {
-        if (!Key.isShiftDown()) return;
-        VectorMod dragPosTemp = getWindow().getScaledMousePos().getSubtracted(dragPosPre).getMod();
-        //dragPosTemp.scale(1 / (candleScale.getX() * (defaultCandleSpace + defaultCandleWidth)), 1 / candleScale.getY());
-
-        int sign = dragPosPre.getY() < getSize().getY() / 2 ? -1 : 1;
-
-        if (candleScalePre.getY() + sign * dragPosTemp.getY() > 0)
-            candleScale.setY(candleScalePre.getY() + sign * dragPosTemp.getY());
-
-        dragPosPre = getWindow().getScaledMousePos();
-        this.dragPosTemp = Vector.NULL.getMod();
-    }
-
-    //This is a little slow. Maybe find a faster way to jump the gap
-    private void updateDrag() {
-        if (Key.isShiftDown()) return;
         //DRAG Y POSITION
         dragPosTemp = getWindow().getScaledMousePos().getSubtracted(dragPosPre).getMod();
-        dragPosTemp.scale(1 / (candleScale.getX() * (defaultCandleSpace + defaultCandleWidth)), 1 / candleScale.getY());
-        candlePriceOffset = dragPosTemp.getY() + dragPos.getY();
+        dragPosTemp.scale(1 / (candleScale.get().getX() * (candleSeparation + candleWidth)), 1 / candleScale.get().getY());
+        chartFocusPrice.set(focusPricePre + (float) (dragPosTemp.getY() + dragPos.getY()));
 
         //DRAG X POSITION
         int grabIndex = 0;
@@ -250,7 +250,7 @@ public class ChartViewScene extends Scene {
                 foundGrabCandle = true;
             }
 
-            if (!foundHoveredCandle && isHoveredHorizontally(candle, getWindow().getScaledMousePos())) {
+            if (!foundHoveredCandle && ChartUtil.isHoveredHorizontally(candle, candleSeparation, getWindow().getScaledMousePos())) {
                 tempIndex = candleList.indexOf(candle);
                 foundHoveredCandle = true;
             }
@@ -261,60 +261,77 @@ public class ChartViewScene extends Scene {
         int correction = indexDiff * getStock().getTimeFrame().getSeconds();
         int sign = correction != 0 ? Math.abs(correction) / correction : 0;
 
+        //This is a little slow. Maybe find a faster way to jump the gap
         //Jump the time gap when the price is not active.
         // This has issues because of gap jumping requiring multiple update iterations to fully complete.
         // MAYBE instead of the below, check if the day is different, then add more to the correction value if so.
-        while (!StockUtil.isPriceActive(getStock().isExtendedHours(), chartStartTime.getAdded(-correction)))
+        while (!StockUtil.isPriceActive(getStock().isExtendedHours(), chartTime.get().getAdded(-correction)))
             correction += sign * getStock().getTimeFrame().getSeconds();
 
-        chartStartTime = chartStartTime.getAdded(-correction);
+        chartTime.set(chartTime.get().getAdded(-correction));
+    }
+
+    private void updateDragPriceScale() {
+        if (!(Mouse.BUTTON_RIGHT.isButtonDown())) return;
+        VectorMod dragPosTemp = getWindow().getScaledMousePos().getSubtracted(dragPosPre).getMod();;
+
+        if (candleScalePre.getY() + dragPosTemp.getY() > 0)
+            candleScale.set(new Vector(candleScale.get().getX(), candleScalePre.getY() + dragPosTemp.getY()));
+
+        this.dragPosTemp = Vector.NULL.getMod();
     }
 
 
-    private void runScrollScaling(int scroll) {
+    private void updateScrollScaling(int scroll) {
         float min = .02f;
         float speed = (float) scroll / 100;
-        if (Key.isShiftDown()) {
-            int mul = 200;
-            int sign = 1;//getWindow().getScaledMousePos().getY() < getSize().getY() / 2 ? -1 : 1;
-            candleScale.add(0, sign * speed * mul);
-            if (candleScale.getY() < min) candleScale.setY(min);
-        } else {
-            candleScale.add(speed, 0);
-            if (candleScale.getX() < min) candleScale.setX(min);
+        if (Key.isShiftDown()) { //Y Scaling
+            int mul = 300;
+            candleScale.set(candleScale.get().getAdded(0, speed * mul));
+            if (candleScale.get().getY() < min) candleScale.set(new Vector(candleScale.get().getX(),min));
+        } else { //X Scaling
+            candleScale.set(candleScale.get().getAdded(speed,0));
+            if (candleScale.get().getX() < min) candleScale.set(new Vector(min,candleScale.get().getY()));
         }
     }
 
 
-    public static ArrayList<CandleUI> getOnScreenCandles(Scene scene, Stock stock, DateTime lastTime, int candleCount, double focusPrice, double focusY, double separation, double candleWidth, Vector candleScale) {
-        ArrayList<CandleUI> listCandle = new ArrayList<>();
-
-        int currentCandles = 0;
-        int loopCount = 0;
-        while (currentCandles < candleCount) { //This is mildly inefficient. Maybe rewrite it someday ¯\_(ツ)_/¯
-            DateTime candleTime = lastTime.getAdded(-loopCount * stock.getTimeFrame().getSeconds());
-
-            if (!StockUtil.isPriceActive(stock.isExtendedHours(), candleTime)) {
-                loopCount++;
-                continue;
-            }
-
-            double x = scene.getSize().getX() - ((separation + candleWidth) * (currentCandles + 1)) * candleScale.getX();
-            if (!(x + candleWidth < 0 || x > scene.getSize().getX())) {
-                CandleUI candle = new CandleUI(stock, candleTime, x, focusY, focusPrice, candleWidth * candleScale.getX(), new Vector(1, candleScale.getY()));
-                listCandle.add(candle);
-            }
-
-            currentCandles++;
-            loopCount++;
-        }
-
-        return listCandle;
-    }
-
+    // -------------------------------TEMPORARY ELEMENTS START-----------------------------------------------
 
     @Deprecated
-    private void tempKeyDebug(int key) {
+    private void tempDebugDraw() {
+        //Draw EMA Calculation Progress Bars
+        if (getWindow().isDebug()) {
+            if (getStock().isProgressActive()) {
+                ProgressBarUI<Double> progressBar = new ProgressBarUI<>(new Vector(2, getSize().getY() - 20), new Vector(200, 20), ColorE.BLUE, getStock().getProgressContainer(), 0, 1);
+                QuickDraw.drawText("[" + getStock().getTicker() + "] Saving...", Fonts.getDefaultFont(20), new Vector(progressBar.getSize().getX() + 4, progressBar.getPos().getY()), ColorE.WHITE);
+                progressBar.draw();
+            }
+            for (Indicator indicator : listIndicator) {
+                if (indicator.isProgressActive()) {
+                    ProgressBarUI<Double> progressBar = new ProgressBarUI<>(new Vector(2, getSize().getY() - 20), new Vector(200, 20), ColorE.BLUE, indicator.getProgressContainer(), 0, 1);
+                    progressBar.draw();
+                }
+            }
+        }
+    }
+
+    @Deprecated
+    private void tempDebugMouse(int button, int action, int mods, Vector mousePos) {
+        if (button == Mouse.BUTTON_LEFT.getId() && action == Mouse.ACTION_CLICK && Key.isControlDown()) {
+            for (CandleUI candle : candleList) {
+                if (ChartUtil.isHoveredHorizontally(candle, candleSeparation, mousePos)) {
+                    Thread thread = new Thread(() -> tempCalculateProbability(candle.getOpenTime()));
+                    thread.setDaemon(true);
+                    thread.start();
+                    break;
+                }
+            }
+        }
+    }
+
+    @Deprecated
+    private void tempDebugKey(int key) {
         if (!getWindow().isDebug()) return;
 
         if (key == Key.KEY_U.getId()) {
@@ -324,8 +341,8 @@ public class ChartViewScene extends Scene {
             downloader.combineToLiveFile();
             getStock().applyHistoricalData();
             DateTime startCandle = getStock().getOpenTime();
-            ema.calculateData(startCandle.getAdded(-30 * 24 * 60 * 60), startCandle);
-            sma.calculateData(startCandle.getAdded(-30 * 24 * 60 * 60), startCandle);
+            for (Indicator indicator : listIndicator)
+                indicator.calculateData(startCandle.getAdded(-30 * 24 * 60 * 60), startCandle);
         }
 
         if (key == Key.KEY_C.getId()) {
@@ -342,60 +359,33 @@ public class ChartViewScene extends Scene {
 
     @Deprecated
     private void tempCalculateData() {
-        DateTime endCandle = new DateTime(2023, 12, 12, 19, 59);
-        //DateTime startCandle = getStock().getOpenTime();
-
-        //ema.calculateData(startCandle.getAdded(-30 * 24 * 60 * 60), startCandle);
-        //sma.calculateData(startCandle.getAdded(-30 * 24 * 60 * 60),startCandle);
-
-        DateTime time = StockUtil.getAdjustedCurrentTime();
+        DateTime endCandle = StockUtil.getAdjustedCurrentTime();
+        DateTime startCandle = StockUtil.getAdjustedCurrentTime();
 
         for (CandleUI candle : candleList) {
-            if (isHoveredHorizontally(candle,getWindow().getScaledMousePos())) {
-                time = candle.getOpenTime();
+            if (ChartUtil.isHoveredHorizontally(candle, candleSeparation, getWindow().getScaledMousePos())) {
+                startCandle = candle.getOpenTime();
                 break;
             }
         }
 
-        ema.calculateData(time, endCandle);
-        sma.calculateData(time, endCandle);
-    }
-
-    private void tempSaveData() {
-        System.out.println("Saving Data");
-        sma.saveHistoricalData();
-        ema.saveHistoricalData();
-        stock.saveHistoricalData();
-        System.out.println("Data Saved!");
+        for (Indicator indicator : listIndicator) indicator.calculateData(startCandle, endCandle);
     }
 
     @Deprecated
-    private void tempDrawDebugElements() {
-        //Draw EMA Calculation Progress Bars
-        if (getWindow().isDebug()) {
-            if (stock.isProgressActive()) {
-                ProgressBarUI<Double> progressBar = new ProgressBarUI<>(new Vector(2, getSize().getY() - 20), new Vector(200, 20), ColorE.BLUE, stock.getProgressContainer(), 0, 1);
-                QuickDraw.drawText("[" + stock.getTicker() + "] Saving...", Fonts.getDefaultFont(20), new Vector(progressBar.getSize().getX() + 4, progressBar.getPos().getY()), ColorE.WHITE);
-                progressBar.draw();
-            }
-            if (sma.isProgressActive() && sma.getCurrentCalculationDate() != null) {
-                ProgressBarUI<Double> progressBar = new ProgressBarUI<>(new Vector(2, getSize().getY() - 20), new Vector(200, 20), ColorE.BLUE, sma.getProgressContainer(), 0, 1);
-                QuickDraw.drawText(sma.getCurrentCalculationDate().toString(), Fonts.getDefaultFont(20), new Vector(progressBar.getSize().getX() + 4, progressBar.getPos().getY()), ColorE.WHITE);
-                progressBar.draw();
-            }
-            if (ema.isProgressActive() && ema.getCurrentCalculationDate() != null) {
-                ProgressBarUI<Double> progressBar = new ProgressBarUI<>(new Vector(2, getSize().getY() - 20), new Vector(200, 20), ColorE.BLUE, ema.getProgressContainer(), 0, 1);
-                QuickDraw.drawText(ema.getCurrentCalculationDate().toString(), Fonts.getDefaultFont(20), new Vector(progressBar.getSize().getX() + 4, progressBar.getPos().getY()), ColorE.WHITE);
-                progressBar.draw();
-            }
-        }
+    private void tempSaveData() {
+        System.out.println("Saving Data");
+        for (Indicator indicator : listIndicator) indicator.saveHistoricalData();
+        getStock().saveHistoricalData();
+        settingManager.saveAll();
+        System.out.println("Data Saved!");
     }
 
     @Deprecated
     private Container<float[]> tempCalculateProbability(DateTime candleTime) {
         System.out.println("---");
         System.out.println("Starting Calculation for candle: " + candleTime);
-        float precision = .03f; //Maybe try .02f
+        float precision = .03f; //Maybe try .02f?
         int lookBackAmount = 4;
         int lookForwardAmount = 5;
         boolean priceScale = false;
@@ -419,9 +409,7 @@ public class ChartViewScene extends Scene {
         return results;
     }
 
-    private boolean isHoveredHorizontally(CandleUI candle, Vector mousePos) {
-        return mousePos.getX() >= candle.getPos().getX() - defaultCandleSpace * candleScale.getX() / 2 && mousePos.getX() <= candle.getPos().getX() + candle.getBodySize().getX() + defaultCandleSpace * candleScale.getX() / 2;
-    }
+    // -------------------------------TEMPORARY ELEMENTS END-----------------------------------------------
 
 
     public Stock getStock() {

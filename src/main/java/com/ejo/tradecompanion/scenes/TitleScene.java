@@ -44,6 +44,7 @@ public class TitleScene extends Scene {
             this.stock = new Stock(stockTicker.get(),timeFrame.get(),extendedHours.get(), Stock.PriceSource.MARKETWATCH,false);
             progressBarLoadStock.setContainer(stock.getProgressContainer());
             stock.loadHistoricalData();
+            //getWindow().setScene(new ChartViewScene(stock));
             getWindow().setScene(new ChartViewScene(stock));
             //getWindow().setScene(new ProbabilityScene());
         });
