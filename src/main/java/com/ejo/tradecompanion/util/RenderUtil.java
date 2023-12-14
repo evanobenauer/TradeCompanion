@@ -12,6 +12,7 @@ import com.ejo.stockdownloader.render.CandleUI;
 import com.ejo.stockdownloader.util.StockUtil;
 import com.ejo.tradecompanion.indicator.Indicator;
 import com.ejo.tradecompanion.indicator.IndicatorEMA;
+import com.ejo.tradecompanion.indicator.IndicatorMA;
 import com.ejo.tradecompanion.indicator.IndicatorSMA;
 
 import java.awt.*;
@@ -24,7 +25,7 @@ public class RenderUtil {
         ArrayList<Indicator> maList = new ArrayList<>();
         ArrayList<ArrayList<Vector>> listPointsMAs = new ArrayList<>();
         for (Indicator indicator : indicators) {
-            if (indicator instanceof IndicatorEMA || indicator instanceof IndicatorSMA) {
+            if (indicator instanceof IndicatorMA) {
                 maList.add(indicator);
                 listPointsMAs.add(new ArrayList<>());
             }
@@ -41,7 +42,7 @@ public class RenderUtil {
                 double maY = candle.getFocusY() - (indicator.getCloseValue(candle.getOpenTime()) * candle.getScale().getY()) + candle.getFocusPrice() * candle.getScale().getY();
                 if (indicator.getCloseValue(candle.getOpenTime()) != -1) {
 
-                    //This is a little buggy for some reason
+                    //This is a little buggy with precise positioning of points for some reason
                     listPointsMAs.get(j).add(new Vector(candle.getPos().getX() + (candle.getBodySize().getX() / 2), maY)); //This one is more akin to what is realistic
                 }
             }
@@ -49,12 +50,13 @@ public class RenderUtil {
 
         //Draw MA Lines
         for (int i = 0; i < indicators.length; i++) {
-            Indicator ma = indicators[i];
-            ArrayList<Vector> points = listPointsMAs.get(i);
-            ColorE color = ma instanceof IndicatorEMA ? ColorE.YELLOW : ColorE.BLUE;
-            try {
-                new LineUI(color, LineUI.Type.PLAIN, 4d, points.toArray(new Vector[0])).draw();
-            } catch (Exception ignored) {
+            Indicator indicator = indicators[i];
+            if (indicator instanceof IndicatorMA ma) {
+                ArrayList<Vector> points = listPointsMAs.get(i);
+                try {
+                    new LineUI(ma.getColor(), LineUI.Type.PLAIN, 4d, points.toArray(new Vector[0])).draw();
+                } catch (Exception ignored) {
+                }
             }
         }
 

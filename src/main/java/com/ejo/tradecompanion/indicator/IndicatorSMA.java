@@ -1,6 +1,7 @@
 package com.ejo.tradecompanion.indicator;
 
 import com.ejo.glowlib.math.MathE;
+import com.ejo.glowlib.misc.ColorE;
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.stockdownloader.data.Stock;
 import com.ejo.stockdownloader.util.StockUtil;
@@ -8,20 +9,12 @@ import com.ejo.stockdownloader.util.StockUtil;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class IndicatorSMA extends Indicator {
-
-    private final int period;
+public class IndicatorSMA extends IndicatorMA {
 
     private DateTime currentCalculationDate;
 
     public IndicatorSMA(Stock stock, int period) {
-        super(stock,false);
-        this.period = period;
-    }
-
-    @Override
-    public void updateScrapeData() {
-        //TODO: Figure this out lol
+        super(stock,false,period, ColorE.BLUE);
     }
 
     /**
@@ -82,7 +75,8 @@ public class IndicatorSMA extends Indicator {
         return avg;
     }
 
-    public int getPeriod() {
-        return period;
+    @Override
+    public String toString() {
+        return "SMA" + getPeriod();
     }
 }

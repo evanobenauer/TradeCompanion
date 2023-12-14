@@ -43,7 +43,10 @@ public abstract class Indicator {
     /**
      * Scrapes live indicator data from a website depending on the chosen data source
      */
-    public abstract void updateScrapeData(); //TODO: make sure to save the data to the hash on candle close
+    public void updateScrapeData(){
+        //TODO: make sure to save the data to the hash on candle close
+        //TODO: Maybe implement this one day. If you choose to, make the method abstract
+    }
 
     /**
      * Scrapes live data every indicated delay
@@ -159,6 +162,8 @@ public abstract class Indicator {
         return loadHistoricalData(MAIN_PATH, getDefaultFileName());
     }
 
+
+    //TODO: Create a "Load Historical Data" with timeframe parameters as not to load the whole thing so memory does explode
 
     /**
      * Saves all historical data to a specified path with the key as the datetimeID in the first column

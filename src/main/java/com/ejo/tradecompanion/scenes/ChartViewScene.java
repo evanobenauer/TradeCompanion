@@ -14,6 +14,9 @@ import com.ejo.glowui.scene.elements.SideBarUI;
 import com.ejo.glowui.scene.elements.TextUI;
 import com.ejo.glowui.scene.elements.shape.GradientRectangleUI;
 import com.ejo.glowui.scene.elements.shape.LineUI;
+import com.ejo.glowui.scene.elements.shape.RectangleUI;
+import com.ejo.glowui.scene.elements.widget.ButtonUI;
+import com.ejo.glowui.scene.elements.widget.ModeCycleUI;
 import com.ejo.glowui.scene.elements.widget.ToggleUI;
 import com.ejo.glowui.util.Key;
 import com.ejo.glowui.util.Mouse;
@@ -23,6 +26,7 @@ import com.ejo.stockdownloader.data.Stock;
 import com.ejo.stockdownloader.data.api.AlphaVantageDownloader;
 import com.ejo.stockdownloader.render.CandleUI;
 import com.ejo.stockdownloader.util.StockUtil;
+import com.ejo.tradecompanion.elements.ListDisplayUI;
 import com.ejo.tradecompanion.indicator.Indicator;
 import com.ejo.tradecompanion.indicator.IndicatorEMA;
 import com.ejo.tradecompanion.indicator.IndicatorSMA;
@@ -33,6 +37,14 @@ import com.ejo.tradecompanion.util.RenderUtil;
 import java.util.ArrayList;
 
 public class ChartViewScene extends Scene {
+
+
+    //TODO: Indicators Button
+    // where you can add different indicators from a modecycle. In the future, replace the modecycle with a dropdown
+    // When an EMA/SMA is selected, have options appear on the bottom to select the color and period
+    // Make sure to have the indicator list be savable.
+    // Make sure to create a visual indicator for the probability
+
 
     //Define Stock (If the stock needs to be changed, switch to a new scene)
     private final Stock stock;
@@ -61,23 +73,47 @@ public class ChartViewScene extends Scene {
     private Vector candleScalePre;
     private DateTime dragTimeGrab;
 
-    //Sidebar Elements
-    //Add a separate EMA and SMA menu for each that allows you to select which periods you want and calculate them based on date ranges
-    private final ToggleUI toggleEMA = new ToggleUI("EMA", new Vector(30, 30), new Vector(100, 25), ChartUtil.WIDGET_COLOR, new Container<>(false));
-    private final ToggleUI toggleSMA = new ToggleUI("SMA", new Vector(30, 30 + 30 + 5), new Vector(100, 25), ChartUtil.WIDGET_COLOR, new Container<>(false));
 
-    private final SideBarUI topBar = new SideBarUI(SideBarUI.Type.TOP, 120, true, ChartUtil.WIDGET_COLOR.alpha(120), toggleEMA, toggleSMA);
+    //Indicator Bar
+    private double yVal = 100;
+
+    private final ModeCycleUI<String> modeCycleIndicator;
+    private final ListDisplayUI<Indicator> listDisplayIndicator;
+    private final ButtonUI buttonAddIndicator;
+
+    private final SideBarUI indicatorBar = new SideBarUI(SideBarUI.Type.LEFT, 160, true, ChartUtil.WIDGET_COLOR.alpha(120),
+            new TextUI("Add Indicator", Fonts.getDefaultFont(20), new Vector(22, yVal), ColorE.WHITE)
+            , modeCycleIndicator = new ModeCycleUI<>(new Vector(20, yVal += 30), new Vector(120, 30), ChartUtil.WIDGET_COLOR, new Container<>("SMA"), "SMA", "EMA")
+            , listDisplayIndicator = new ListDisplayUI<>(new Vector(80, 0), listIndicator).setFontSize(30)
+            , buttonAddIndicator = new ButtonUI("Add",new Vector(20, yVal += 50), new Vector(120, 30), ChartUtil.WIDGET_COLOR, ButtonUI.MouseButton.LEFT, () -> {
+                Indicator indicator = null;
+                switch (modeCycleIndicator.getContainer().get()) {
+                    case "SMA" -> listIndicator.add(indicator = new IndicatorSMA(getStock(), 50));
+                    case "EMA" -> listIndicator.add(indicator = new IndicatorEMA(getStock(), 50));
+                }
+                assert indicator != null;
+                indicator.loadHistoricalData();
+            })
+    );
+
+
+    //Top Bar
+    private final ButtonUI indicatorButton = new ButtonUI("Indicators", new Vector(20, 25), new Vector(120, 30), ChartUtil.WIDGET_COLOR, ButtonUI.MouseButton.LEFT, () -> indicatorBar.setOpen(!indicatorBar.isOpen()));
+
+    private final SideBarUI topBar = new SideBarUI(SideBarUI.Type.TOP, 80, true, new ColorE(0, 100, 100),
+            indicatorButton
+    );
 
 
     public ChartViewScene(Stock stock) {
         super("Chart Viewer");
         this.stock = stock;
-        this.settingManager = new SettingManager("setting",getStock().getTicker() + "_" + getStock().getTimeFrame().getTag() + "-settings");
+        this.settingManager = new SettingManager("setting", getStock().getTicker() + "_" + getStock().getTimeFrame().getTag() + "-settings");
 
         //Set Default Setting Values
-        this.chartTime = new Setting<>(settingManager,"chartTime",new DateTime(2023, 11, 30, 10, 0));
-        this.chartFocusPrice = new Setting<>(settingManager,"chartFocusPrice",getStock().getClose(chartTime.get()));
-        this.candleScale = new Setting<>(settingManager,"chartCandleScale",new VectorMod(1,200));
+        this.chartTime = new Setting<>(settingManager, "chartTime", new DateTime(2023, 11, 30, 10, 0));
+        this.chartFocusPrice = new Setting<>(settingManager, "chartFocusPrice", getStock().getClose(chartTime.get()));
+        this.candleScale = new Setting<>(settingManager, "chartCandleScale", new VectorMod(1, 200));
 
         //Load Settings
         settingManager.loadAll();
@@ -87,19 +123,14 @@ public class ChartViewScene extends Scene {
         this.candleWidth = 30;
         this.candleSeparation = 4;
 
-        // ----------------- Temporary Data ------------------
-        IndicatorEMA ema = new IndicatorEMA(stock, 50);
-        IndicatorSMA sma = new IndicatorSMA(stock, 50);
+        //TODO: find a way to save and load the indicator list. Or don't it isn't really necessary ¯\_(ツ)_/¯
+        // Maybe do this outside the chart view so that you can have a progressbar on the title screen
+        for (Indicator indicator : listIndicator) indicator.loadHistoricalData();
 
-        ema.loadHistoricalData(); //TODO: make sure to not include loading in constructor in future
-        sma.loadHistoricalData();
+        indicatorBar.setOpen(false);
+        indicatorBar.getButton().setEnabled(false);
 
-        listIndicator.add(ema);
-        listIndicator.add(sma);
-
-        // --------------------------------------------------
-
-        addElements(topBar);
+        addElements(indicatorBar, topBar);
 
         runStockUpdateThread();
     }
@@ -108,18 +139,12 @@ public class ChartViewScene extends Scene {
     @Override
     public void draw() {
         //TODO: Daily candles have issues rendering
-        //TODO: Draw arrow indicator if the candle price is below or above the focusPrice and off screen
 
         //Draw Gradient Background
         new GradientRectangleUI(Vector.NULL, getSize(), new ColorE(0, 255, 255).alpha(20), new ColorE(0, 0, 0), GradientRectangleUI.Type.VERTICAL).draw();
 
         //Draw Candles & Indicators
-        ArrayList<Indicator> renderIndicators = new ArrayList<>();
-        for (Indicator indicator : listIndicator) {
-            if (toggleEMA.getContainer().get() && indicator instanceof IndicatorEMA) renderIndicators.add(indicator);
-            if (toggleSMA.getContainer().get() && indicator instanceof IndicatorSMA) renderIndicators.add(indicator);
-        }
-        RenderUtil.drawCandlesFromData(candleList, renderIndicators.toArray(new Indicator[0]));
+        RenderUtil.drawCandlesFromData(candleList, listIndicator.toArray(new Indicator[0]));
 
         //Draw Close Percent Progress Bar
         ProgressBarUI<Double> progressBarClosePercent = new ProgressBarUI<>(Vector.NULL, new Vector(100, 30), ColorE.BLUE, getStock().getClosePercent(), 0, 1);
@@ -142,6 +167,10 @@ public class ChartViewScene extends Scene {
             updateDragPosition();
             updateDragPriceScale();
         }
+
+        if (!topBar.isOpen()) indicatorBar.setOpen(false);
+
+        listDisplayIndicator.setPos(new Vector(listDisplayIndicator.getPos().getX(), getSize().getY() - listDisplayIndicator.getHeight() - 2));
     }
 
     @Override
@@ -172,15 +201,16 @@ public class ChartViewScene extends Scene {
     private void runStockUpdateThread() {
         Thread stockUpdateThread = new Thread(() -> {
             while (true) {
+                getStock().updateLivePrice(.5);
+                if (getStock().getOpenTime() != null) {
+                    for (Indicator indicator : listIndicator)
+                        indicator.calculateData(getStock().getOpenTime());
+                }
                 try {
                     Thread.sleep(1);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
-                getStock().updateLivePrice(.5);
-                if (getStock().getOpenTime() == null) return;
-                for (Indicator indicator : listIndicator)
-                    indicator.calculateData(getStock().getOpenTime());
             }
         });
         stockUpdateThread.setDaemon(true);
@@ -189,6 +219,7 @@ public class ChartViewScene extends Scene {
     }
 
     private void drawCrossHair() {
+        if (!(!topBar.isMouseOver() && !indicatorBar.isMouseOver())) return;
         //Draw Vertical Candle Line
         for (CandleUI candle : candleList) {
             if (ChartUtil.isHoveredHorizontally(candle, candleSeparation, getWindow().getScaledMousePos())) {
@@ -211,8 +242,9 @@ public class ChartViewScene extends Scene {
     }
 
     private void updateDragMouseToggle(int button, int action, Vector mousePos) {
-        if (topBar.isMouseOver()) return;
+        boolean canDrag = !(topBar.isMouseOver() || indicatorBar.isMouseOver());
         if (action == Mouse.ACTION_CLICK) {
+            if (!canDrag) return;
             this.dragTimeGrab = null;
             for (CandleUI candle : candleList) {
                 if (ChartUtil.isHoveredHorizontally(candle, candleSeparation, mousePos)) {
@@ -227,7 +259,7 @@ public class ChartViewScene extends Scene {
 
         if (action == Mouse.ACTION_RELEASE) {
             this.dragging = false;
-            this.dragPos.add(dragPosTemp);
+            if (canDrag) this.dragPos.add(dragPosTemp);
         }
     }
 
@@ -245,7 +277,7 @@ public class ChartViewScene extends Scene {
         boolean foundHoveredCandle = false;
         boolean foundGrabCandle = false;
         for (CandleUI candle : candleList) {
-            if (!foundGrabCandle && dragTimeGrab.equals(candle.getOpenTime())) {
+            if (!foundGrabCandle && dragTimeGrab != null && dragTimeGrab.equals(candle.getOpenTime())) {
                 grabIndex = candleList.indexOf(candle);
                 foundGrabCandle = true;
             }
@@ -273,7 +305,8 @@ public class ChartViewScene extends Scene {
 
     private void updateDragPriceScale() {
         if (!(Mouse.BUTTON_RIGHT.isButtonDown())) return;
-        VectorMod dragPosTemp = getWindow().getScaledMousePos().getSubtracted(dragPosPre).getMod();;
+        VectorMod dragPosTemp = getWindow().getScaledMousePos().getSubtracted(dragPosPre).getMod();
+        ;
 
         if (candleScalePre.getY() + dragPosTemp.getY() > 0)
             candleScale.set(new Vector(candleScale.get().getX(), candleScalePre.getY() + dragPosTemp.getY()));
@@ -284,14 +317,16 @@ public class ChartViewScene extends Scene {
 
     private void updateScrollScaling(int scroll) {
         float min = .02f;
+        float max = 1;
         float speed = (float) scroll / 100;
         if (Key.isShiftDown()) { //Y Scaling
             int mul = 300;
             candleScale.set(candleScale.get().getAdded(0, speed * mul));
-            if (candleScale.get().getY() < min) candleScale.set(new Vector(candleScale.get().getX(),min));
+            if (candleScale.get().getY() < min) candleScale.set(new Vector(candleScale.get().getX(), min));
         } else { //X Scaling
-            candleScale.set(candleScale.get().getAdded(speed,0));
-            if (candleScale.get().getX() < min) candleScale.set(new Vector(min,candleScale.get().getY()));
+            candleScale.set(candleScale.get().getAdded(speed, 0));
+            if (candleScale.get().getX() < min) candleScale.set(new Vector(min, candleScale.get().getY()));
+            if (candleScale.get().getX() > max) candleScale.set(new Vector(max, candleScale.get().getY()));
         }
     }
 

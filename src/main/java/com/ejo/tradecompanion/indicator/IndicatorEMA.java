@@ -1,27 +1,20 @@
 package com.ejo.tradecompanion.indicator;
 
 import com.ejo.glowlib.math.MathE;
+import com.ejo.glowlib.misc.ColorE;
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.stockdownloader.data.Stock;
 import com.ejo.stockdownloader.util.StockUtil;
 
-public class IndicatorEMA extends Indicator {
+public class IndicatorEMA extends IndicatorMA {
 
     private final IndicatorSMA equivalentSMA;
-
-    private final int period;
 
     private DateTime currentCalculationDate;
 
     public IndicatorEMA(Stock stock, int period) {
-        super(stock,false);
+        super(stock,false,period, ColorE.YELLOW);
         this.equivalentSMA = new IndicatorSMA(getStock(), period);
-        this.period = period;
-    }
-
-    @Override
-    public void updateScrapeData() {
-
     }
 
     @Override
@@ -66,7 +59,8 @@ public class IndicatorEMA extends Indicator {
         return currentCalculationDate;
     }
 
-    public int getPeriod() {
-        return period;
+    @Override
+    public String toString() {
+        return "EMA" + getPeriod();
     }
 }
