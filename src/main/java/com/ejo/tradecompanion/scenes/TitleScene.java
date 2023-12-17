@@ -13,8 +13,8 @@ import com.ejo.glowui.scene.elements.widget.ButtonUI;
 import com.ejo.glowui.scene.elements.widget.ModeCycleUI;
 import com.ejo.glowui.scene.elements.widget.TextFieldUI;
 import com.ejo.glowui.scene.elements.widget.ToggleUI;
-import com.ejo.stockdownloader.data.Stock;
-import com.ejo.stockdownloader.util.TimeFrame;
+import com.ejo.tradecompanion.data.Stock;
+import com.ejo.tradecompanion.util.TimeFrame;
 
 import java.awt.*;
 

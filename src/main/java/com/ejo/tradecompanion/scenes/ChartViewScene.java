@@ -14,25 +14,24 @@ import com.ejo.glowui.scene.elements.SideBarUI;
 import com.ejo.glowui.scene.elements.TextUI;
 import com.ejo.glowui.scene.elements.shape.GradientRectangleUI;
 import com.ejo.glowui.scene.elements.shape.LineUI;
-import com.ejo.glowui.scene.elements.shape.RectangleUI;
 import com.ejo.glowui.scene.elements.widget.ButtonUI;
 import com.ejo.glowui.scene.elements.widget.ModeCycleUI;
-import com.ejo.glowui.scene.elements.widget.ToggleUI;
 import com.ejo.glowui.util.Key;
 import com.ejo.glowui.util.Mouse;
 import com.ejo.glowui.util.render.Fonts;
 import com.ejo.glowui.util.render.QuickDraw;
-import com.ejo.stockdownloader.data.Stock;
 import com.ejo.stockdownloader.data.api.AlphaVantageDownloader;
-import com.ejo.stockdownloader.render.CandleUI;
-import com.ejo.stockdownloader.util.StockUtil;
+import com.ejo.stockdownloader.util.TimeFrame;
+import com.ejo.tradecompanion.data.Stock;
+import com.ejo.tradecompanion.elements.CandleUI;
 import com.ejo.tradecompanion.elements.ListDisplayUI;
-import com.ejo.tradecompanion.indicator.Indicator;
-import com.ejo.tradecompanion.indicator.IndicatorEMA;
-import com.ejo.tradecompanion.indicator.IndicatorSMA;
+import com.ejo.tradecompanion.data.indicator.Indicator;
+import com.ejo.tradecompanion.data.indicator.IndicatorEMA;
+import com.ejo.tradecompanion.data.indicator.IndicatorSMA;
 import com.ejo.tradecompanion.util.ChartUtil;
 import com.ejo.tradecompanion.util.ProbabilityUtil;
 import com.ejo.tradecompanion.util.RenderUtil;
+import com.ejo.tradecompanion.util.StockUtil;
 
 import java.util.ArrayList;
 
@@ -60,6 +59,9 @@ public class ChartViewScene extends Scene {
     private final Setting<Float> chartFocusPrice;
     private final Setting<Vector> candleScale;
 
+    //Saving Variables
+    private boolean isSaving = false;
+
     //Candle Dimensions
     private final double candleWidth;
     private final double candleSeparation;
@@ -85,19 +87,27 @@ public class ChartViewScene extends Scene {
             new TextUI("Add Indicator", Fonts.getDefaultFont(20), new Vector(22, yVal), ColorE.WHITE)
             , modeCycleIndicator = new ModeCycleUI<>(new Vector(20, yVal += 30), new Vector(120, 30), ChartUtil.WIDGET_COLOR, new Container<>("SMA"), "SMA", "EMA")
             , listDisplayIndicator = new ListDisplayUI<>(new Vector(80, 0), listIndicator).setFontSize(30)
-            , buttonAddIndicator = new ButtonUI("Add",new Vector(20, yVal += 50), new Vector(120, 30), ChartUtil.WIDGET_COLOR, ButtonUI.MouseButton.LEFT, () -> {
-                Indicator indicator = null;
-                switch (modeCycleIndicator.getContainer().get()) {
-                    case "SMA" -> listIndicator.add(indicator = new IndicatorSMA(getStock(), 50));
-                    case "EMA" -> listIndicator.add(indicator = new IndicatorEMA(getStock(), 50));
-                }
-                assert indicator != null;
-                indicator.loadHistoricalData();
-            })
+            , buttonAddIndicator = new ButtonUI("Add", new Vector(20, yVal += 50), new Vector(120, 30), ChartUtil.WIDGET_COLOR, ButtonUI.MouseButton.LEFT, () -> {
+            for (Indicator i : listDisplayIndicator.getList()) if (i.isProgressActive()) return;
+            Indicator indicator = switch (modeCycleIndicator.getContainer().get()) {
+                case "SMA" -> new IndicatorSMA(getStock(), 50);
+                case "EMA" -> new IndicatorEMA(getStock(), 50);
+                default -> null;
+            };
+            assert indicator != null;
+            for (Indicator i : listDisplayIndicator.getList()) {
+                if (i.toString().equals(indicator.toString())) return;
+            }
+            listIndicator.add(indicator);
+            Thread thread = new Thread(indicator::loadHistoricalData);
+            thread.setDaemon(true);
+            thread.start();
+        })
     );
 
 
     //Top Bar
+    //TODO: Add Color Font Selection, Jump-To-Date, Drag Speed?, Tooltips?
     private final ButtonUI indicatorButton = new ButtonUI("Indicators", new Vector(20, 25), new Vector(120, 30), ChartUtil.WIDGET_COLOR, ButtonUI.MouseButton.LEFT, () -> indicatorBar.setOpen(!indicatorBar.isOpen()));
 
     private final SideBarUI topBar = new SideBarUI(SideBarUI.Type.TOP, 80, true, new ColorE(0, 100, 100),
@@ -117,6 +127,15 @@ public class ChartViewScene extends Scene {
 
         //Load Settings
         settingManager.loadAll();
+
+        //Set Time for Non-Extended Hours
+        int loopCount = 0;
+        DateTime adjustedTime = chartTime.get();
+        while (!StockUtil.isPriceActive(getStock().isExtendedHours(),chartTime.get().getAdded(-loopCount * stock.getTimeFrame().getSeconds()))) { //This is mildly inefficient. Maybe rewrite it someday ¯\_(ツ)_/¯
+            adjustedTime = chartTime.get().getAdded(-loopCount * stock.getTimeFrame().getSeconds());
+            loopCount++;
+        }
+        chartTime.set(adjustedTime.getAdded(-stock.getTimeFrame().getSeconds()));
 
         //Set Default Values
         this.focusPricePre = chartFocusPrice.get();
@@ -154,6 +173,11 @@ public class ChartViewScene extends Scene {
         super.draw();
 
         drawCrossHair();
+
+        for (Indicator indicator : listIndicator) {
+            if (indicator.isProgressActive() && !isSaving)
+                RenderUtil.drawProgressWheel(0, indicator.getProgressContainer().get(), 1, 20, getWindow().getScaledMousePos());
+        }
     }
 
     @Override
@@ -201,7 +225,8 @@ public class ChartViewScene extends Scene {
     private void runStockUpdateThread() {
         Thread stockUpdateThread = new Thread(() -> {
             while (true) {
-                getStock().updateLivePrice(.5);
+                //getStock().updateLivePrice(.5f); //Updates every half second tend to cause an ip ban on error 403
+                getStock().updateLivePrice(1);
                 if (getStock().getOpenTime() != null) {
                     for (Indicator indicator : listIndicator)
                         indicator.calculateData(getStock().getOpenTime());
@@ -306,9 +331,9 @@ public class ChartViewScene extends Scene {
     private void updateDragPriceScale() {
         if (!(Mouse.BUTTON_RIGHT.isButtonDown())) return;
         VectorMod dragPosTemp = getWindow().getScaledMousePos().getSubtracted(dragPosPre).getMod();
-        ;
+        //TODO: Make the multiplier based off of the hovered price?
 
-        if (candleScalePre.getY() + dragPosTemp.getY() > 0)
+        if (candleScalePre.getY() + dragPosTemp.getY() >= 0)
             candleScale.set(new Vector(candleScale.get().getX(), candleScalePre.getY() + dragPosTemp.getY()));
 
         this.dragPosTemp = Vector.NULL.getMod();
@@ -316,17 +341,18 @@ public class ChartViewScene extends Scene {
 
 
     private void updateScrollScaling(int scroll) {
-        float min = .02f;
-        float max = 1;
+        float xMin = .02f;
+        float yMin = 0f;
+        float xMax = 1;
         float speed = (float) scroll / 100;
         if (Key.isShiftDown()) { //Y Scaling
-            int mul = 300;
+            int mul = 100 * 3; //TODO: Make the multiplier based off of the hovered price?
             candleScale.set(candleScale.get().getAdded(0, speed * mul));
-            if (candleScale.get().getY() < min) candleScale.set(new Vector(candleScale.get().getX(), min));
+            if (candleScale.get().getY() < yMin) candleScale.set(new Vector(candleScale.get().getX(), yMin));
         } else { //X Scaling
             candleScale.set(candleScale.get().getAdded(speed, 0));
-            if (candleScale.get().getX() < min) candleScale.set(new Vector(min, candleScale.get().getY()));
-            if (candleScale.get().getX() > max) candleScale.set(new Vector(max, candleScale.get().getY()));
+            if (candleScale.get().getX() < xMin) candleScale.set(new Vector(xMin, candleScale.get().getY()));
+            if (candleScale.get().getX() > xMax) candleScale.set(new Vector(xMax, candleScale.get().getY()));
         }
     }
 
@@ -371,10 +397,23 @@ public class ChartViewScene extends Scene {
 
         if (key == Key.KEY_U.getId()) {
             System.out.println("Updating Data");
-            AlphaVantageDownloader downloader = new AlphaVantageDownloader("H0JHAOU61I4MESDZ", false, getStock().getTicker(), getStock().getTimeFrame(), true);
+            TimeFrame timeFrame = switch (getStock().getTimeFrame()) {
+                case ONE_SECOND -> TimeFrame.ONE_SECOND;
+                case FIVE_SECONDS -> TimeFrame.FIVE_SECONDS;
+                case THIRTY_SECONDS -> TimeFrame.THIRTY_SECONDS;
+                case ONE_MINUTE -> TimeFrame.ONE_MINUTE;
+                case FIVE_MINUTES -> TimeFrame.FIVE_MINUTES;
+                case FIFTEEN_MINUTES -> TimeFrame.FIFTEEN_MINUTES;
+                case THIRTY_MINUTES -> TimeFrame.THIRTY_MINUTES;
+                case ONE_HOUR -> TimeFrame.ONE_HOUR;
+                case TWO_HOUR -> TimeFrame.TWO_HOUR;
+                case FOUR_HOUR -> TimeFrame.FOUR_HOUR;
+                case ONE_DAY -> TimeFrame.ONE_DAY;
+            };
+            AlphaVantageDownloader downloader = new AlphaVantageDownloader("H0JHAOU61I4MESDZ", false, getStock().getTicker(), timeFrame, true);
             downloader.download(StockUtil.getAdjustedCurrentTime().getYear(), StockUtil.getAdjustedCurrentTime().getMonth());
             downloader.combineToLiveFile();
-            getStock().applyHistoricalData();
+            getStock().applyLoadHistoricalData();
             DateTime startCandle = getStock().getOpenTime();
             for (Indicator indicator : listIndicator)
                 indicator.calculateData(startCandle.getAdded(-30 * 24 * 60 * 60), startCandle);
@@ -410,9 +449,11 @@ public class ChartViewScene extends Scene {
     @Deprecated
     private void tempSaveData() {
         System.out.println("Saving Data");
+        this.isSaving = true;
         for (Indicator indicator : listIndicator) indicator.saveHistoricalData();
         getStock().saveHistoricalData();
         settingManager.saveAll();
+        this.isSaving = false;
         System.out.println("Data Saved!");
     }
 

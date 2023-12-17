@@ -1,19 +1,16 @@
 package com.ejo.tradecompanion.util;
 
+import com.ejo.glowlib.math.Angle;
 import com.ejo.glowlib.math.MathE;
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowlib.misc.ColorE;
-import com.ejo.glowlib.time.DateTime;
-import com.ejo.glowui.scene.Scene;
+import com.ejo.glowui.scene.elements.shape.CircleUI;
 import com.ejo.glowui.scene.elements.shape.LineUI;
 import com.ejo.glowui.util.render.QuickDraw;
-import com.ejo.stockdownloader.data.Stock;
-import com.ejo.stockdownloader.render.CandleUI;
-import com.ejo.stockdownloader.util.StockUtil;
-import com.ejo.tradecompanion.indicator.Indicator;
-import com.ejo.tradecompanion.indicator.IndicatorEMA;
-import com.ejo.tradecompanion.indicator.IndicatorMA;
-import com.ejo.tradecompanion.indicator.IndicatorSMA;
+import com.ejo.tradecompanion.data.Stock;
+import com.ejo.tradecompanion.data.indicator.Indicator;
+import com.ejo.tradecompanion.data.indicator.IndicatorMA;
+import com.ejo.tradecompanion.elements.CandleUI;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -60,6 +57,17 @@ public class RenderUtil {
             }
         }
 
+    }
+
+    //Size default is 20
+    public static void drawProgressWheel(double min, double current, double max, int size, Vector mousePos) {
+        double progress = (current - min) / (max - min);
+        //ColorE color = new ColorE((int) (255 * (1 - progress)), (int) (255 * (progress)), 0, 255);
+        ColorE color = ChartUtil.WIDGET_COLOR;
+        Vector pos = mousePos.getAdded(new Vector(size + (double) size /4, (double) -size /4));
+        new CircleUI(pos, ColorE.BLACK, (double) size + (double) size /4, CircleUI.Type.MEDIUM).draw();
+        new CircleUI(pos, color, size, new Angle(360 * (progress), true), CircleUI.Type.MEDIUM).draw();
+        new CircleUI(pos, ColorE.BLACK, (double) size - (double) size /2, CircleUI.Type.MEDIUM).draw();
     }
 
     public static void drawCandleTooltip(CandleUI candle, Vector mousePos) {

@@ -14,12 +14,11 @@ import com.ejo.glowui.util.Mouse;
 import com.ejo.glowui.util.Util;
 import com.ejo.glowui.util.render.Fonts;
 import com.ejo.glowui.util.render.QuickDraw;
-import com.ejo.stockdownloader.data.Stock;
-import com.ejo.stockdownloader.render.CandleUI;
-import com.ejo.stockdownloader.util.StockUtil;
-import com.ejo.stockdownloader.util.TimeFrame;
+import com.ejo.tradecompanion.data.Stock;
+import com.ejo.tradecompanion.elements.CandleUI;
 import com.ejo.tradecompanion.util.ProbabilityUtil;
 import com.ejo.tradecompanion.util.RenderUtil;
+import com.ejo.tradecompanion.util.TimeFrame;
 
 import java.util.ArrayList;
 import java.util.Arrays;

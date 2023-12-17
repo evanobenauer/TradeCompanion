@@ -20,6 +20,8 @@ dependencies {
     implementation 'com.github.evanobenauer:StockDownloader:84a627b4d7'
     implementation 'com.github.evanobenauer:GlowLib:652620dfea'
 
+    implementation 'org.jsoup:jsoup:1.16.2'
+
     implementation platform("org.lwjgl:lwjgl-bom:$lwjglVersion")
 
     implementation "org.lwjgl:lwjgl"

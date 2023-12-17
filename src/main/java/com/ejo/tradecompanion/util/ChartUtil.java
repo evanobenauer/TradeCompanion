@@ -4,9 +4,8 @@ import com.ejo.glowlib.math.Vector;
 import com.ejo.glowlib.misc.ColorE;
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowui.scene.Scene;
-import com.ejo.stockdownloader.data.Stock;
-import com.ejo.stockdownloader.render.CandleUI;
-import com.ejo.stockdownloader.util.StockUtil;
+import com.ejo.tradecompanion.data.Stock;
+import com.ejo.tradecompanion.elements.CandleUI;
 
 import java.util.ArrayList;
 

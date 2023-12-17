@@ -1,10 +1,10 @@
-package com.ejo.tradecompanion.indicator;
+package com.ejo.tradecompanion.data.indicator;
 
 import com.ejo.glowlib.math.MathE;
 import com.ejo.glowlib.misc.ColorE;
 import com.ejo.glowlib.time.DateTime;
-import com.ejo.stockdownloader.data.Stock;
-import com.ejo.stockdownloader.util.StockUtil;
+import com.ejo.tradecompanion.data.Stock;
+import com.ejo.tradecompanion.util.StockUtil;
 
 public class IndicatorEMA extends IndicatorMA {
 
