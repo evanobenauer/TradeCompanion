@@ -2,6 +2,7 @@ package com.ejo.tradecompanion.util;
 
 import com.ejo.glowlib.time.DateTime;
 
+@Deprecated
 public class TimeUtil {
 
     public static long getSecondDiff(DateTime timeFinal, DateTime timeInitial) {

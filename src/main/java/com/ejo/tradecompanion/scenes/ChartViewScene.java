@@ -18,29 +18,32 @@ import com.ejo.glowui.scene.elements.widget.ButtonUI;
 import com.ejo.glowui.scene.elements.widget.ModeCycleUI;
 import com.ejo.glowui.util.Key;
 import com.ejo.glowui.util.Mouse;
+import com.ejo.glowui.util.Util;
 import com.ejo.glowui.util.render.Fonts;
 import com.ejo.glowui.util.render.QuickDraw;
 import com.ejo.stockdownloader.data.api.AlphaVantageDownloader;
-import com.ejo.stockdownloader.util.TimeFrame;
+import com.ejo.stockdownloader.util.DownloadTimeFrame;
 import com.ejo.tradecompanion.data.Stock;
+import com.ejo.tradecompanion.data.indicator.IndicatorProbability;
 import com.ejo.tradecompanion.elements.CandleUI;
 import com.ejo.tradecompanion.elements.ListDisplayUI;
 import com.ejo.tradecompanion.data.indicator.Indicator;
 import com.ejo.tradecompanion.data.indicator.IndicatorEMA;
 import com.ejo.tradecompanion.data.indicator.IndicatorSMA;
+import com.ejo.tradecompanion.elements.RenderProbabilityUI;
 import com.ejo.tradecompanion.util.ChartUtil;
 import com.ejo.tradecompanion.util.ProbabilityUtil;
 import com.ejo.tradecompanion.util.RenderUtil;
 import com.ejo.tradecompanion.util.StockUtil;
 
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 
 public class ChartViewScene extends Scene {
 
 
     //TODO: Indicators Button
     // where you can add different indicators from a modecycle. In the future, replace the modecycle with a dropdown
-    // When an EMA/SMA is selected, have options appear on the bottom to select the color and period
     // Make sure to have the indicator list be savable.
     // Make sure to create a visual indicator for the probability
 
@@ -85,13 +88,14 @@ public class ChartViewScene extends Scene {
 
     private final SideBarUI indicatorBar = new SideBarUI(SideBarUI.Type.LEFT, 160, true, ChartUtil.WIDGET_COLOR.alpha(120),
             new TextUI("Add Indicator", Fonts.getDefaultFont(20), new Vector(22, yVal), ColorE.WHITE)
-            , modeCycleIndicator = new ModeCycleUI<>(new Vector(20, yVal += 30), new Vector(120, 30), ChartUtil.WIDGET_COLOR, new Container<>("SMA"), "SMA", "EMA")
+            , modeCycleIndicator = new ModeCycleUI<>(new Vector(20, yVal += 30), new Vector(120, 30), ChartUtil.WIDGET_COLOR, new Container<>("SMA"), "SMA", "EMA", "Probability")
             , listDisplayIndicator = new ListDisplayUI<>(new Vector(80, 0), listIndicator).setFontSize(30)
             , buttonAddIndicator = new ButtonUI("Add", new Vector(20, yVal += 50), new Vector(120, 30), ChartUtil.WIDGET_COLOR, ButtonUI.MouseButton.LEFT, () -> {
             for (Indicator i : listDisplayIndicator.getList()) if (i.isProgressActive()) return;
             Indicator indicator = switch (modeCycleIndicator.getContainer().get()) {
                 case "SMA" -> new IndicatorSMA(getStock(), 50);
                 case "EMA" -> new IndicatorEMA(getStock(), 50);
+                case "Probability" -> new IndicatorProbability(getStock(),.03f,4,5,false,true,false);
                 default -> null;
             };
             assert indicator != null;
@@ -163,10 +167,20 @@ public class ChartViewScene extends Scene {
         new GradientRectangleUI(Vector.NULL, getSize(), new ColorE(0, 255, 255).alpha(20), new ColorE(0, 0, 0), GradientRectangleUI.Type.VERTICAL).draw();
 
         //Draw Candles & Indicators
-        RenderUtil.drawCandlesFromData(candleList, listIndicator.toArray(new Indicator[0]));
+        RenderUtil.drawAllData(candleList, listIndicator.toArray(new Indicator[0]));
+
+        //TODO: Test below: Draw probability indicator. Reroute Later
+        for (Indicator indicator : listIndicator) {
+            if (indicator instanceof IndicatorProbability prob) {
+                RenderProbabilityUI render = new RenderProbabilityUI(prob,Vector.NULL, 100);
+                render.setPos(getSize().getSubtracted(100,100));
+                render.draw(this,getWindow().getScaledMousePos());
+                break;
+            }
+        }
 
         //Draw Close Percent Progress Bar
-        ProgressBarUI<Double> progressBarClosePercent = new ProgressBarUI<>(Vector.NULL, new Vector(100, 30), ColorE.BLUE, getStock().getClosePercent(), 0, 1);
+        ProgressBarUI<Double> progressBarClosePercent = new ProgressBarUI<>(Vector.NULL, new Vector(100, 20), ColorE.BLUE, getStock().getClosePercent(), 0, 1);
         progressBarClosePercent.setPos(new Vector(getSize().getX() - progressBarClosePercent.getSize().getX(), getSize().getY() - progressBarClosePercent.getSize().getY()));
         progressBarClosePercent.draw();
 
@@ -227,9 +241,20 @@ public class ChartViewScene extends Scene {
             while (true) {
                 //getStock().updateLivePrice(.5f); //Updates every half second tend to cause an ip ban on error 403
                 getStock().updateLivePrice(1);
-                if (getStock().getOpenTime() != null) {
-                    for (Indicator indicator : listIndicator)
-                        indicator.calculateData(getStock().getOpenTime());
+                try {
+                    if (getStock().getOpenTime() != null) {
+                        for (Indicator indicator : listIndicator) {
+                            if (indicator instanceof IndicatorProbability prob) {
+                                DateTime probCalculationTime = getStock().getOpenTime().getAdded(-getStock().getTimeFrame().getSeconds());
+                                if (!prob.isCalculating() && getStock().shouldClose())
+                                    new Thread(() -> prob.calculateData(probCalculationTime)).start();
+                            } else {
+                                indicator.calculateData(getStock().getOpenTime());
+                            }
+                        }
+                    }
+                } catch (ConcurrentModificationException e) {
+                    e.printStackTrace();
                 }
                 try {
                     Thread.sleep(1);
@@ -248,7 +273,9 @@ public class ChartViewScene extends Scene {
         //Draw Vertical Candle Line
         for (CandleUI candle : candleList) {
             if (ChartUtil.isHoveredHorizontally(candle, candleSeparation, getWindow().getScaledMousePos())) {
-                LineUI line = new LineUI(new Vector(candle.getPos().getX() + candle.getWidth() / 2, 0), new Vector(candle.getPos().getX() + candle.getWidth() / 2, getSize().getY()), ColorE.WHITE, LineUI.Type.DOTTED, 1);
+                //LineUI line = new LineUI(new Vector(candle.getPos().getX() + candle.getWidth() / 2, 0), new Vector(candle.getPos().getX() + candle.getWidth() / 2, getSize().getY()), ColorE.WHITE, LineUI.Type.DOTTED, 1);
+                double x = candle.getPos().getX() + candle.getWidth() * candle.getScale().getX()/ 2;
+                LineUI line = new LineUI(new Vector(x, 0), new Vector(x, getSize().getY()), ColorE.WHITE, LineUI.Type.DOTTED, 1);
                 line.draw();
                 QuickDraw.drawTextCentered(String.valueOf(candle.getOpenTime()), Fonts.getDefaultFont(24), Vector.NULL.getAdded(candle.getPos().getX() + candle.getWidth() / 2, getSize().getY() - 12), Vector.NULL, ColorE.WHITE);
                 break;
@@ -397,26 +424,12 @@ public class ChartViewScene extends Scene {
 
         if (key == Key.KEY_U.getId()) {
             System.out.println("Updating Data");
-            TimeFrame timeFrame = switch (getStock().getTimeFrame()) {
-                case ONE_SECOND -> TimeFrame.ONE_SECOND;
-                case FIVE_SECONDS -> TimeFrame.FIVE_SECONDS;
-                case THIRTY_SECONDS -> TimeFrame.THIRTY_SECONDS;
-                case ONE_MINUTE -> TimeFrame.ONE_MINUTE;
-                case FIVE_MINUTES -> TimeFrame.FIVE_MINUTES;
-                case FIFTEEN_MINUTES -> TimeFrame.FIFTEEN_MINUTES;
-                case THIRTY_MINUTES -> TimeFrame.THIRTY_MINUTES;
-                case ONE_HOUR -> TimeFrame.ONE_HOUR;
-                case TWO_HOUR -> TimeFrame.TWO_HOUR;
-                case FOUR_HOUR -> TimeFrame.FOUR_HOUR;
-                case ONE_DAY -> TimeFrame.ONE_DAY;
-            };
-            AlphaVantageDownloader downloader = new AlphaVantageDownloader("H0JHAOU61I4MESDZ", false, getStock().getTicker(), timeFrame, true);
+            AlphaVantageDownloader downloader = new AlphaVantageDownloader("H0JHAOU61I4MESDZ", false, getStock().getTicker(), DownloadTimeFrame.getFromTag(getStock().getTimeFrame().getTag()), true);
             downloader.download(StockUtil.getAdjustedCurrentTime().getYear(), StockUtil.getAdjustedCurrentTime().getMonth());
             downloader.combineToLiveFile();
             getStock().applyLoadHistoricalData();
             DateTime startCandle = getStock().getOpenTime();
-            for (Indicator indicator : listIndicator)
-                indicator.calculateData(startCandle.getAdded(-30 * 24 * 60 * 60), startCandle);
+            for (Indicator indicator : listIndicator) indicator.calculateData(startCandle.getAdded(-30 * 24 * 60 * 60), startCandle);
         }
 
         if (key == Key.KEY_C.getId()) {
@@ -443,15 +456,21 @@ public class ChartViewScene extends Scene {
             }
         }
 
-        for (Indicator indicator : listIndicator) indicator.calculateData(startCandle, endCandle);
+        for (Indicator indicator : listIndicator) {
+            if (indicator instanceof IndicatorProbability) continue;
+            indicator.calculateData(startCandle, endCandle);
+        }
     }
 
     @Deprecated
     private void tempSaveData() {
         System.out.println("Saving Data");
         this.isSaving = true;
-        for (Indicator indicator : listIndicator) indicator.saveHistoricalData();
-        getStock().saveHistoricalData();
+        for (Indicator indicator : listIndicator) {
+            if (indicator instanceof IndicatorProbability) continue;
+            indicator.applySaveHistoricalData();
+        }
+        getStock().applySaveHistoricalData();
         settingManager.saveAll();
         this.isSaving = false;
         System.out.println("Data Saved!");

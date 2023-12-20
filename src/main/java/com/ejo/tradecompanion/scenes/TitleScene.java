@@ -62,6 +62,7 @@ public class TitleScene extends Scene {
 
     @Override
     public void draw() {
+        updateElementPositions();
         new GradientRectangleUI(Vector.NULL,getSize(),new ColorE(0, 255, 255).alpha(20),new ColorE(0, 0, 0), GradientRectangleUI.Type.VERTICAL).draw();
         super.draw();
     }
@@ -71,7 +72,6 @@ public class TitleScene extends Scene {
     public void tick() {
         super.tick();
         progressBarLoadStock.setEnabled(stock != null && stock.isProgressActive());
-        updateElementPositions();
     }
 
     private float sinStep = 0;

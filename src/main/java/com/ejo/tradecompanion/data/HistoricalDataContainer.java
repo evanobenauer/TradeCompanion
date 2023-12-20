@@ -8,6 +8,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 
 public abstract class HistoricalDataContainer {
 
@@ -101,7 +102,7 @@ public abstract class HistoricalDataContainer {
      * @param fileName
      * @return
      */
-    public void applyLoadHistoricalData(HashMap<Long,float[]> historicalData, String filePath, String fileName) {
+    public void applyLoadHistoricalData(String filePath, String fileName) {
         getProgressContainer().set(0d);
         this.progressActive = true;
         try {
@@ -119,7 +120,7 @@ public abstract class HistoricalDataContainer {
                     float[] floatRowCut = new float[rowCut.length];
                     for (int i = 0; i < rowCut.length; i++) floatRowCut[i] = Float.parseFloat(rowCut[i]);
 
-                    historicalData.put(Long.parseLong(row[0]), floatRowCut);
+                    getHistoricalData().put(Long.parseLong(row[0]), floatRowCut);
                     currentRow += 1;
                     getProgressContainer().set((double) currentRow / fileSize);
                 }
@@ -133,22 +134,72 @@ public abstract class HistoricalDataContainer {
     }
 
     public void applyLoadHistoricalData() {
-        applyLoadHistoricalData(getHistoricalData(),getDefaultFilePath(),getDefaultFileName());
+        applyLoadHistoricalData(getDefaultFilePath(),getDefaultFileName());
+    }
+
+    public boolean applySaveHistoricalData(String filePath, String fileName) {
+        getProgressContainer().set(0d);
+        this.progressActive = true;
+
+        //Load all file data
+        HashMap<Long,float[]> dataMap = new HashMap<>();
+        try {
+            File file = new File(filePath + (fileName.equals("") ? "" : "/") + fileName.replace(".csv", "") + ".csv");
+
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String line;
+                long fileSize = Files.lines(file.toPath()).count();
+                long currentRow = 0;
+                while ((line = reader.readLine()) != null) {
+                    String[] row = line.split(",");
+                    long key = Long.parseLong(row[0]);
+                    String[] rowCut = line.replace(key + ",", "").split(",");
+
+                    float[] floatRowCut = new float[rowCut.length];
+                    for (int i = 0; i < rowCut.length; i++) floatRowCut[i] = Float.parseFloat(rowCut[i]);
+
+                    dataMap.put(key, floatRowCut);
+                    currentRow += 1;
+                    getProgressContainer().set((double) currentRow / fileSize / 2);
+                }
+            } catch (IOException | SecurityException e) {
+                e.printStackTrace();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        //Add all class data
+        dataMap.putAll(getHistoricalData());
+
+        //Save all data
+        FileManager.createFolderPath(filePath); //Creates the folder path if it does not exist
+        String outputFile = filePath + (filePath.equals("") ? "" : "/") + fileName.replace(".csv","") + ".csv";
+        long fileSize = dataMap.size();
+        long currentRow = 0;
+        try(FileWriter writer = new FileWriter(outputFile)) {
+            for (Long key : dataMap.keySet()) {
+                writer.write(key + "," + Arrays.toString(dataMap.get(key)).replace("[","").replace("]","").replace(" ","") + "\n");
+                currentRow += 1;
+                getProgressContainer().set((double) currentRow / fileSize / 2 + .5);
+            }
+            this.progressActive = false;
+            return true;
+        } catch (IOException | SecurityException e) {
+            e.printStackTrace();
+        }
+        this.progressActive = false;
+        return false;
     }
 
     public boolean applySaveHistoricalData() {
-        //TODO: Load in all data from the file, overwrite if necessary. Then save all the data
-        // Then unload all data. Then reload from the specific timeframe
-        return saveHistoricalData(getDefaultFilePath(), getDefaultFileName());
+        return applySaveHistoricalData(getDefaultFilePath(),getDefaultFileName());
     }
 
 
 
     //TODO: Create a "Load Historical Data" with timeframe parameters as not to load the whole thing so memory doesn't explode
-    // This would cause issues saving. So if the data is not the full data,
-    // reload the data file using "Apply", then save it all
-    // Then reload the data from the timeframe as not to store the old data. Then call System.gc()
-
+    // Make sure to save with applySave as to not remove any unloaded data
     public HashMap<Long, float[]> loadHistoricalData(String filePath, String fileName, DateTime startTime, DateTime endTime) {
         return null;
     }

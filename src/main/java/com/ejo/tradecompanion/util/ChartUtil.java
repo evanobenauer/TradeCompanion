@@ -32,7 +32,7 @@ public class ChartUtil {
 
             double x = scene.getSize().getX() - ((separation + candleWidth) * (currentCandles + 1)) * candleScale.getX();
             if (!(x + candleWidth < 0 || x > scene.getSize().getX())) {
-                CandleUI candle = new CandleUI(stock, candleTime, x, focusY, focusPrice, candleWidth * candleScale.getX(), new Vector(1, candleScale.getY()));
+                CandleUI candle = new CandleUI(stock, candleTime, x, focusY, focusPrice, candleWidth, candleScale);
                 listCandle.add(candle);
             }
 

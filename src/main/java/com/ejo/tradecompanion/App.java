@@ -2,9 +2,6 @@ package com.ejo.tradecompanion;
 
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowui.Window;
-import com.ejo.stockdownloader.data.Stock;
-import com.ejo.stockdownloader.util.StockUtil;
-import com.ejo.stockdownloader.util.TimeFrame;
 import com.ejo.tradecompanion.scenes.TitleScene;
 
 import java.io.IOException;
@@ -23,7 +20,7 @@ public class App {
             true, 4, 60, 60
     );
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         window.run();
         window.close();
     }

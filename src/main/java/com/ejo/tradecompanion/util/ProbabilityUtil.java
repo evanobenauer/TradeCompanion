@@ -15,134 +15,134 @@ public class ProbabilityUtil {
     //TODO: Find a way to throw out garbage data from 2000-2003. It messes stuff up. Maybe just exclude it?
     //TODO: Add previous calculation section back to the last 3 so they can be compared especially when working with live data
 
+    //TODO: Add an option to look back only a certain timeframe to make pattern recognition more reflective of current market trends
 
     public static ArrayList<Long> getSimilarCandleIDs(Stock stock, DateTime candleTime, float marginPrice, boolean doPriceScaling, boolean ignoreWicks, boolean includeAfterHours, int lookForwardAmount, Container<float[]> resultsContainer) {
-        DateTime runTime = DateTime.getCurrentDateTime();
+        DateTime startTime = DateTime.getCurrentDateTime();
 
         ArrayList<Long> similarCandleList = new ArrayList<>();
-
         int similarCandleCount = 0;
 
         //Next Candles
         int nextGreen = 0;
         int nextRed = 0;
 
-        //Results in 3 Candles
-        float avgCloseInThreeCandles = 0;
-        int greenCloseInThreeCandles = 0;
-        int redCloseInThreeCandles = 0;
+        //Look Forward Results
+        float lookForwardAvgChange = 0;
+        int lookForwardGreen = 0;
+        int lookForwardRed = 0;
+
+        //Define Shorthand Variables
+        int timeOffset = stock.getTimeFrame().getSeconds();
 
         //Current Data
         float[] mainData = stock.getData(candleTime);
         long mainID = candleTime.getDateTimeID();
 
 
-        //This may throw a concurrent modification exception
-        for (Map.Entry<Long, float[]> rawData : stock.getHistoricalData().entrySet()) { //Loops through all stock data
+        for (Map.Entry<Long, float[]> rawData : stock.getHistoricalData().entrySet()) { //Loops through all stock data; This may throw a concurrent modification exception
             float[] testData = rawData.getValue();
             long testID = rawData.getKey();
 
+            DateTime testTime = new DateTime(testID);
+
             if (testID == mainID) continue;
-            if (!includeAfterHours && !StockUtil.isTradingHours(new DateTime(testID))) continue;
+            if (!includeAfterHours && !StockUtil.isTradingHours(testTime)) continue;
             if (testID < 20040000000000L) continue;//TEMPORARY REMOVE EARLY DATA. IT SUCKS
 
             if (areCandlesSimilar(mainData, testData, marginPrice, doPriceScaling, ignoreWicks)) {
-                similarCandleList.add(testID);
-
-                DateTime thisTime = new DateTime(testID);
-                int timeOffset = stock.getTimeFrame().getSeconds();
+                float[] nextData = stock.getData(testTime.getAdded(timeOffset));
+                float[] lookForwardData = stock.getData(testTime.getAdded(timeOffset * lookForwardAmount));
+                if (nextData[0] == -1 || lookForwardData[0] == -1) continue;
 
                 //Next Candle Data
-                float[] nextData = stock.getData(thisTime.getAdded(timeOffset));
                 if (nextData[1] > nextData[0]) nextGreen++;
                 if (nextData[1] < nextData[0]) nextRed++;
 
-                //Three Candles Data
-                float[] threeCandlesData = stock.getData(thisTime.getAdded(timeOffset * lookForwardAmount));
-                float thisClose = stock.getClose(thisTime);
-                avgCloseInThreeCandles += threeCandlesData[1] - thisClose;
-                if (threeCandlesData[1] > thisClose) greenCloseInThreeCandles++;
-                if (threeCandlesData[1] < thisClose) redCloseInThreeCandles++;
+                //Forward Prediction
+                float testClose = testData[1];
+                float lookForwardClose = lookForwardData[1];
+                lookForwardAvgChange += lookForwardClose - testClose;
+                if (lookForwardClose > testClose) lookForwardGreen++;
+                if (lookForwardClose < testClose) lookForwardRed++;
 
+                similarCandleList.add(testID);
                 similarCandleCount++;
             }
         }
 
         //Calculate Average Close in Three Candles
-        if (similarCandleCount == 0) avgCloseInThreeCandles = 0;
-        else avgCloseInThreeCandles /= similarCandleCount;
-        avgCloseInThreeCandles = (float) MathE.roundDouble(avgCloseInThreeCandles, 2);
+        if (similarCandleCount == 0) lookForwardAvgChange = 0;
+        else lookForwardAvgChange /= similarCandleCount;
+        lookForwardAvgChange = (float) MathE.roundDouble(lookForwardAvgChange, 2);
 
         DateTime endTime = DateTime.getCurrentDateTime();
 
-        resultsContainer.set(new float[]{similarCandleCount, (float) MathE.roundDouble((double) nextGreen / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) nextRed / similarCandleCount * 100, 1), avgCloseInThreeCandles, (float) MathE.roundDouble((double) greenCloseInThreeCandles / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) redCloseInThreeCandles / similarCandleCount * 100, 1),(float) (endTime.getCalendar().getTimeInMillis() - runTime.getCalendar().getTimeInMillis()) / 1000});
-
+        resultsContainer.set(new float[]{similarCandleCount, (float) MathE.roundDouble((double) nextGreen / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) nextRed / similarCandleCount * 100, 1), lookForwardAvgChange, (float) MathE.roundDouble((double) lookForwardGreen / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) lookForwardRed / similarCandleCount * 100, 1), (float) (endTime.getCalendar().getTimeInMillis() - startTime.getCalendar().getTimeInMillis()) / 1000});
         return similarCandleList;
     }
 
     public static ArrayList<Long> filterSimilarCandlesFromPrevious(Stock stock, DateTime candleTime, float marginPrice, boolean doPriceScaling, boolean ignoreWicks, boolean includeAfterHours, ArrayList<Long> similarCandles, int previous, int lookForwardAmount, Container<float[]> resultsContainer) {
-        DateTime runTime = DateTime.getCurrentDateTime();
+        DateTime startTime = DateTime.getCurrentDateTime();
 
         ArrayList<Long> similarCandleList = new ArrayList<>();
-        HashMap<Long, float[]> historicalData = stock.getHistoricalData();
-
         int similarCandleCount = 0;
 
         //Next Candles
         int nextGreen = 0;
         int nextRed = 0;
 
-        //Results in 3 Candles
-        float avgCloseInThreeCandles = 0;
-        int greenCloseInThreeCandles = 0;
-        int redCloseInThreeCandles = 0;
+        //Look Forward Results
+        float lookForwardAvgChange = 0;
+        int lookForwardGreen = 0;
+        int lookForwardRed = 0;
+
+        //Define Shorthand Variables
+        int timeOffset = stock.getTimeFrame().getSeconds();
 
         //Previous Candle Data
-        DateTime prevCandleTime = candleTime.getAdded(-stock.getTimeFrame().getSeconds() * previous);
-        float[] prevMainData = stock.getData(prevCandleTime);
+        float[] prevMainData = stock.getData(candleTime.getAdded(-timeOffset * previous));
 
 
         //Checks if the previous candle is similar also. This will filter out all who do not have a similar previous candle
         for (Long id : similarCandles) {
-            if (!includeAfterHours && !StockUtil.isTradingHours(new DateTime(id))) continue;
+            DateTime similarTime = new DateTime(id);
+            if (!includeAfterHours && !StockUtil.isTradingHours(similarTime)) continue;
 
-            DateTime thisTime = new DateTime(id);
-            Long prevID = thisTime.getAdded(-stock.getTimeFrame().getSeconds() * previous).getDateTimeID();
-
-            float[] prevTestData = historicalData.get(prevID);
-            if (prevTestData == null) continue;
+            //Define Data
+            float[] similarData = stock.getData(similarTime);
+            float[] prevTestData = stock.getData(similarTime.getAdded(-timeOffset * previous));
+            if (prevTestData[0] == -1 || similarData[1] == -1) continue;
 
             if (areCandlesSimilar(prevMainData, prevTestData, marginPrice, doPriceScaling, ignoreWicks)) {
-                similarCandleList.add(id);
+                float[] nextData = stock.getData(similarTime.getAdded(timeOffset));
+                float[] lookForwardData = stock.getData(similarTime.getAdded(timeOffset * lookForwardAmount));
+                if (nextData[0] == -1 || lookForwardData[0] == -1) continue;
 
                 //Next Candle Data
-                int timeOffset = stock.getTimeFrame().getSeconds();
-                float[] nextData = stock.getData(thisTime.getAdded(timeOffset));
                 if (nextData[1] > nextData[0]) nextGreen++;
                 if (nextData[1] < nextData[0]) nextRed++;
 
-                //Three Candles Data
-                float[] threeCandlesData = stock.getData(thisTime.getAdded(timeOffset * lookForwardAmount));
-                float thisClose = stock.getClose(thisTime);
-                avgCloseInThreeCandles += threeCandlesData[1] - thisClose;
-                if (threeCandlesData[1] > thisClose) greenCloseInThreeCandles++;
-                if (threeCandlesData[1] < thisClose) redCloseInThreeCandles++;
+                //Forward Prediction
+                float testClose = similarData[1];
+                float lookForwardClose = lookForwardData[1];
+                lookForwardAvgChange += lookForwardClose - testClose;
+                if (lookForwardClose > testClose) lookForwardGreen++;
+                if (lookForwardClose < testClose) lookForwardRed++;
 
-                //More can be added here. Like nextNextNextGreen to look farther in the future based on the built pattern
-                // You could also check what the live close price is a few candles ahead to see the average price chance over time
-
+                similarCandleList.add(id);
                 similarCandleCount++;
             }
         }
 
         //Calculate Average Close in Three Candles
-        if (similarCandleCount == 0) avgCloseInThreeCandles = 0;
-        else avgCloseInThreeCandles /= similarCandleCount;
-        avgCloseInThreeCandles = (float) MathE.roundDouble(avgCloseInThreeCandles, 2);
+        if (similarCandleCount == 0) lookForwardAvgChange = 0;
+        else lookForwardAvgChange /= similarCandleCount;
+        lookForwardAvgChange = (float) MathE.roundDouble(lookForwardAvgChange, 2);
 
         DateTime endTime = DateTime.getCurrentDateTime();
 
-        resultsContainer.set(new float[]{similarCandleCount, (float) MathE.roundDouble((double) nextGreen / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) nextRed / similarCandleCount * 100, 1), avgCloseInThreeCandles, (float) MathE.roundDouble((double) greenCloseInThreeCandles / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) redCloseInThreeCandles / similarCandleCount * 100, 1), (float) (endTime.getCalendar().getTimeInMillis() - runTime.getCalendar().getTimeInMillis()) / 1000});
+        resultsContainer.set(new float[]{similarCandleCount, (float) MathE.roundDouble((double) nextGreen / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) nextRed / similarCandleCount * 100, 1), lookForwardAvgChange, (float) MathE.roundDouble((double) lookForwardGreen / similarCandleCount * 100, 1), (float) MathE.roundDouble((double) lookForwardRed / similarCandleCount * 100, 1), (float) (endTime.getCalendar().getTimeInMillis() - startTime.getCalendar().getTimeInMillis()) / 1000});
 
         return similarCandleList;
     }
@@ -171,7 +171,7 @@ public class ProbabilityUtil {
         //boolean bodySize = isWithinMargin(mainOpen,testOpen / pricingScale,marginPrice) && isWithinMargin(getOpenCloseDifference(mainOpen,mainClose),getOpenCloseDifference(testOpen,testClose),marginPrice);
 
         //This compares the body size
-        boolean bodySize = isWithinMargin(getOpenCloseDifference(mainOpen,mainClose),getOpenCloseDifference(testOpen,testClose) / pricingScale,marginPrice);
+        boolean bodySize = isWithinMargin(getOpenCloseDifference(mainOpen, mainClose), getOpenCloseDifference(testOpen, testClose) / pricingScale, marginPrice);
 
         if (ignoreWicks) {
             return bodySize;

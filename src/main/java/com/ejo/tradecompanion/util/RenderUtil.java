@@ -4,12 +4,14 @@ import com.ejo.glowlib.math.Angle;
 import com.ejo.glowlib.math.MathE;
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowlib.misc.ColorE;
+import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowui.scene.elements.shape.CircleUI;
 import com.ejo.glowui.scene.elements.shape.LineUI;
 import com.ejo.glowui.util.render.QuickDraw;
 import com.ejo.tradecompanion.data.Stock;
 import com.ejo.tradecompanion.data.indicator.Indicator;
 import com.ejo.tradecompanion.data.indicator.IndicatorMA;
+import com.ejo.tradecompanion.data.indicator.IndicatorProbability;
 import com.ejo.tradecompanion.elements.CandleUI;
 
 import java.awt.*;
@@ -17,13 +19,15 @@ import java.util.ArrayList;
 
 public class RenderUtil {
 
-    public static void drawCandlesFromData(ArrayList<CandleUI> listCandle, Indicator... indicators) {
+    public static void drawAllData(ArrayList<CandleUI> listCandle, Indicator... indicators) {
         //Define MA Lists
-        ArrayList<Indicator> maList = new ArrayList<>();
+        ArrayList<IndicatorMA> maList = new ArrayList<>();
         ArrayList<ArrayList<Vector>> listPointsMAs = new ArrayList<>();
+        boolean isProbabilityActive = false;
         for (Indicator indicator : indicators) {
-            if (indicator instanceof IndicatorMA) {
-                maList.add(indicator);
+            if (indicator instanceof IndicatorProbability) isProbabilityActive = true;
+            if (indicator instanceof IndicatorMA ma) {
+                maList.add(ma);
                 listPointsMAs.add(new ArrayList<>());
             }
         }
@@ -34,26 +38,53 @@ public class RenderUtil {
             if (candle.getStock().getOpen(candle.getOpenTime()) != -1) candle.draw();
 
             //For all MA indicators, add a point for each candle
-            for (int j = 0; j < maList.size(); j++) {
-                Indicator indicator = indicators[j];
+            for (int i = 0; i < maList.size(); i++) {
+                IndicatorMA indicator = maList.get(i);
                 double maY = candle.getFocusY() - (indicator.getCloseValue(candle.getOpenTime()) * candle.getScale().getY()) + candle.getFocusPrice() * candle.getScale().getY();
                 if (indicator.getCloseValue(candle.getOpenTime()) != -1) {
 
                     //This is a little buggy with precise positioning of points for some reason
-                    listPointsMAs.get(j).add(new Vector(candle.getPos().getX() + (candle.getBodySize().getX() / 2), maY)); //This one is more akin to what is realistic
+                    listPointsMAs.get(i).add(new Vector(candle.getPos().getX() + (candle.getBodySize().getX() / 2), maY));
+                }
+            }
+
+            //Draw Probability Bounds
+            if (candle.getOpenTime().equals(candle.getStock().getOpenTime()) && isProbabilityActive) {
+                Vector sceneSize = new Vector(1, 1000);
+                double x1 = candle.getPos().getX();
+                double x2 = candle.getPos().getX() - 5 * (candle.getWidth() + 4)*candle.getScale().getX();
+                LineUI lineEnd = new LineUI(new Vector(x1, 0), new Vector(x1, sceneSize.getY()), ColorE.WHITE, LineUI.Type.DASHED, 1);
+                LineUI lineStart = new LineUI(new Vector(x2, 0), new Vector(x2, sceneSize.getY()), ColorE.WHITE, LineUI.Type.DASHED, 1);
+                lineEnd.draw();
+                lineStart.draw();
+            }
+
+            //Draw Probability Lines
+            for (int i = 1; i <= 4; i++) {
+                if (candle.getOpenTime().equals(candle.getStock().getOpenTime().getAdded(i * -candle.getStock().getTimeFrame().getSeconds())) && isProbabilityActive) {
+                    DateTime drawTime = candle.getOpenTime();
+                    for (Indicator indicator : indicators) {
+                        if (indicator instanceof IndicatorProbability ind) {
+                            float[] data = ind.getData(drawTime);
+                            ColorE color = ColorE.PURPLE;
+                            if (data[4] > 50) color = ColorE.GREEN;
+                            if (data[5] > 50) color = ColorE.RED;
+                            LineUI line = new LineUI(candle.getPos().getAdded(candle.getScale().getX() * (ind.getPredictionForwardAmount() * (candle.getWidth() + 4)),candle.getBodySize().getY()),candle.getPos().getAdded(candle.getScale().getX() * (ind.getPredictionForwardAmount() * (candle.getWidth() + 4) + candle.getWidth()),candle.getBodySize().getY()),color, LineUI.Type.PLAIN,2);
+                            line.draw();
+                            break;
+                        }
+                    }
                 }
             }
         }
 
         //Draw MA Lines
-        for (int i = 0; i < indicators.length; i++) {
-            Indicator indicator = indicators[i];
-            if (indicator instanceof IndicatorMA ma) {
-                ArrayList<Vector> points = listPointsMAs.get(i);
-                try {
-                    new LineUI(ma.getColor(), LineUI.Type.PLAIN, 4d, points.toArray(new Vector[0])).draw();
-                } catch (Exception ignored) {
-                }
+        for (int i = 0; i < maList.size(); i++) {
+            IndicatorMA ma = maList.get(i);
+            ArrayList<Vector> points = listPointsMAs.get(i);
+            try {
+                new LineUI(ma.getColor(), LineUI.Type.PLAIN, 4d, points.toArray(new Vector[0])).draw();
+            } catch (Exception ignored) {
             }
         }
 
@@ -64,10 +95,10 @@ public class RenderUtil {
         double progress = (current - min) / (max - min);
         //ColorE color = new ColorE((int) (255 * (1 - progress)), (int) (255 * (progress)), 0, 255);
         ColorE color = ChartUtil.WIDGET_COLOR;
-        Vector pos = mousePos.getAdded(new Vector(size + (double) size /4, (double) -size /4));
-        new CircleUI(pos, ColorE.BLACK, (double) size + (double) size /4, CircleUI.Type.MEDIUM).draw();
+        Vector pos = mousePos.getAdded(new Vector(size + (double) size / 4, (double) -size / 4));
+        new CircleUI(pos, ColorE.BLACK, (double) size + (double) size / 4, CircleUI.Type.MEDIUM).draw();
         new CircleUI(pos, color, size, new Angle(360 * (progress), true), CircleUI.Type.MEDIUM).draw();
-        new CircleUI(pos, ColorE.BLACK, (double) size - (double) size /2, CircleUI.Type.MEDIUM).draw();
+        new CircleUI(pos, ColorE.BLACK, (double) size - (double) size / 2, CircleUI.Type.MEDIUM).draw();
     }
 
     public static void drawCandleTooltip(CandleUI candle, Vector mousePos) {

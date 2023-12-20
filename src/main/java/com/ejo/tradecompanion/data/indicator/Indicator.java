@@ -21,8 +21,6 @@ public abstract class Indicator extends HistoricalDataContainer {
 
     //Live Scrape Data Variables
     private final StopWatch updateTimer = new StopWatch();
-    private float open;
-    private float close;
 
 
     public Indicator(Stock stock, boolean loadOnInstantiation) {
@@ -40,7 +38,6 @@ public abstract class Indicator extends HistoricalDataContainer {
 
     /**
      * Scrapes live data every indicated delay
-     *
      * @param liveDelayS
      */
     public void updateScrapeData(double liveDelayS) {
@@ -54,7 +51,7 @@ public abstract class Indicator extends HistoricalDataContainer {
     /**
      * Calculates all indicator data depending on the stock values/historical values
      */
-    public abstract float[] calculateData(DateTime candleTime); //TODO: Implement live web scraping
+    public abstract float[] calculateData(DateTime dateTime); //TODO: Implement live web scraping
 
 
     /**
@@ -105,36 +102,6 @@ public abstract class Indicator extends HistoricalDataContainer {
     @Override
     public String getDefaultFilePath() {
         return "stock_data/indicator_data";
-    }
-
-    /**
-     * When needing to create multiple value calls, it is smart to assigned getData to an array and call from there as it
-     * is much more resource efficient and can speed up a program
-     * @param dateTime
-     * @return
-     */
-    public float[] getData(DateTime dateTime) {
-        float[] rawData = getHistoricalData().get(dateTime.getDateTimeID());
-        if (rawData == null) return new float[]{-1,-1};
-        return rawData;
-    }
-
-    public float getLiveOpenValue() {
-        return open;
-    }
-
-    public float getOpenValue(DateTime dateTime) {
-        if (dateTime.equals(getStock().getOpenTime())) return calculateData(getStock().getOpenTime())[0];
-        return getData(dateTime)[0];
-    }
-
-    public float getLiveCloseValue() {
-        return close;
-    }
-
-    public float getCloseValue(DateTime dateTime) {
-        if (dateTime.equals(getStock().getOpenTime())) return calculateData(getStock().getOpenTime())[1];
-        return getData(dateTime)[1];
     }
 
 

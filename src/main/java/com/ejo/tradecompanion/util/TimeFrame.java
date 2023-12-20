@@ -34,4 +34,11 @@ public enum TimeFrame {
     public String toString() {
         return getTag();
     }
+
+    public static TimeFrame getFromTag(String tag) {
+        for (TimeFrame timeFrame : TimeFrame.values()) {
+            if (tag.equals(timeFrame.getTag())) return timeFrame;
+        }
+        return null;
+    }
 }
