@@ -8,6 +8,7 @@ import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowlib.time.StopWatch;
 import com.ejo.tradecompanion.util.StockUtil;
 import com.ejo.tradecompanion.util.TimeFrame;
+import com.ejo.tradecompanion.web.StockScraper;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -26,7 +27,7 @@ public class Stock extends HistoricalDataContainer {
     private final String ticker;
     private final TimeFrame timeFrame;
     private final boolean extendedHours;
-    private PriceSource livePriceSource;
+    private StockScraper.PriceSource livePriceSource;
 
     //Open Time
     private DateTime openTime;
@@ -50,7 +51,7 @@ public class Stock extends HistoricalDataContainer {
     private final DoOnce doClose = new DoOnce();
 
     //Default Constructor
-    public Stock(String ticker, TimeFrame timeFrame, boolean extendedHours, PriceSource livePriceSource, boolean loadOnInstantiation) {
+    public Stock(String ticker, TimeFrame timeFrame, boolean extendedHours, StockScraper.PriceSource livePriceSource, boolean loadOnInstantiation) {
         this.ticker = ticker;
         this.timeFrame = timeFrame;
         this.extendedHours = extendedHours;
@@ -67,7 +68,7 @@ public class Stock extends HistoricalDataContainer {
         this.doClose.reset();
     }
 
-    public Stock(String ticker, TimeFrame timeFrame, boolean extendedHours, PriceSource livePriceSource) {
+    public Stock(String ticker, TimeFrame timeFrame, boolean extendedHours, StockScraper.PriceSource livePriceSource) {
         this(ticker, timeFrame, extendedHours, livePriceSource, true);
     }
 
@@ -106,18 +107,8 @@ public class Stock extends HistoricalDataContainer {
      */
     public void updateLivePrice() {
         try {
-            float livePrice;
-            switch (getLivePriceSource()) {
-                case MARKETWATCH -> {
-                    String url = "https://www.marketwatch.com/investing/fund/" + getTicker();
-                    livePrice = StockUtil.getWebScrapePrice(url, "bg-quote.value", 0);
-                }
-                case YAHOOFINANCE -> {
-                    String url2 = "https://finance.yahoo.com/quote/" + getTicker() + "?p=" + getTicker();
-                    livePrice = StockUtil.getWebScrapePrice(url2, "data-test", "qsp-price", 0);
-                }
-                default -> livePrice = -1;
-            }
+            StockScraper scraper = new StockScraper(this);
+            float livePrice = scraper.scrapeLivePrice(getLivePriceSource());
             if (livePrice != -1) this.price = livePrice;
         } catch (IOException e) {
             System.out.println("Live Data: Timed Out");
@@ -263,7 +254,7 @@ public class Stock extends HistoricalDataContainer {
         this.max = value;
     }
 
-    public void setLivePriceSource(PriceSource livePriceSource) {
+    public void setLivePriceSource(StockScraper.PriceSource livePriceSource) {
         this.livePriceSource = livePriceSource;
     }
 
@@ -332,7 +323,7 @@ public class Stock extends HistoricalDataContainer {
         return openTime;
     }
 
-    public PriceSource getLivePriceSource() {
+    public StockScraper.PriceSource getLivePriceSource() {
         return livePriceSource;
     }
 
@@ -346,27 +337,6 @@ public class Stock extends HistoricalDataContainer {
 
     public String getTicker() {
         return ticker;
-    }
-
-
-    public enum PriceSource {
-        MARKETWATCH("MarketWatch"),
-        YAHOOFINANCE("YahooFinance");
-
-        private final String string;
-
-        PriceSource(String string) {
-            this.string = string;
-        }
-
-        public String getString() {
-            return string;
-        }
-
-        @Override
-        public String toString() {
-            return getString();
-        }
     }
 
 }

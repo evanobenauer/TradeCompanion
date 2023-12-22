@@ -5,54 +5,74 @@ import com.ejo.glowlib.math.MathE;
 import com.ejo.glowlib.math.Vector;
 import com.ejo.glowlib.misc.ColorE;
 import com.ejo.glowlib.time.DateTime;
+import com.ejo.glowui.scene.Scene;
 import com.ejo.glowui.scene.elements.shape.CircleUI;
 import com.ejo.glowui.scene.elements.shape.LineUI;
+import com.ejo.glowui.util.render.Fonts;
 import com.ejo.glowui.util.render.QuickDraw;
 import com.ejo.tradecompanion.data.Stock;
 import com.ejo.tradecompanion.data.indicator.Indicator;
 import com.ejo.tradecompanion.data.indicator.IndicatorMA;
 import com.ejo.tradecompanion.data.indicator.IndicatorProbability;
 import com.ejo.tradecompanion.elements.CandleUI;
+import com.ejo.tradecompanion.elements.RenderProbabilityUI;
 
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class RenderUtil {
 
-    public static void drawAllData(ArrayList<CandleUI> listCandle, Indicator... indicators) {
-        //Define MA Lists
-        ArrayList<IndicatorMA> maList = new ArrayList<>();
-        ArrayList<ArrayList<Vector>> listPointsMAs = new ArrayList<>();
-        boolean isProbabilityActive = false;
+    public static void drawAllData(Scene scene, ArrayList<CandleUI> listCandle, Indicator... indicators) {
+
+        //Define Indicator Parameters
+        LinkedHashMap<IndicatorMA, ArrayList<Vector>> maMap = new LinkedHashMap<>();
+        ArrayList<CandleUI> probabilityCandles = new ArrayList<>();
+        IndicatorProbability probability = null;
         for (Indicator indicator : indicators) {
-            if (indicator instanceof IndicatorProbability) isProbabilityActive = true;
-            if (indicator instanceof IndicatorMA ma) {
-                maList.add(ma);
-                listPointsMAs.add(new ArrayList<>());
-            }
+            if (indicator instanceof IndicatorProbability p) probability = p;
+            if (indicator instanceof IndicatorMA ma) maMap.put(ma, new ArrayList<>());
         }
 
-        //Draw Candles
         for (CandleUI candle : listCandle) {
+
+            //Draw Candles
             candle.setGreen(new ColorE(0, 255, 255)).setRed(new ColorE(255, 100, 0)).setColorNull(new ColorE(255, 0, 255));
             if (candle.getStock().getOpen(candle.getOpenTime()) != -1) candle.draw();
 
-            //For all MA indicators, add a point for each candle
-            for (int i = 0; i < maList.size(); i++) {
-                IndicatorMA indicator = maList.get(i);
-                double maY = candle.getFocusY() - (indicator.getCloseValue(candle.getOpenTime()) * candle.getScale().getY()) + candle.getFocusPrice() * candle.getScale().getY();
-                if (indicator.getCloseValue(candle.getOpenTime()) != -1) {
-
-                    //This is a little buggy with precise positioning of points for some reason
-                    listPointsMAs.get(i).add(new Vector(candle.getPos().getX() + (candle.getBodySize().getX() / 2), maY));
-                }
+            //Add MA points
+            for (Map.Entry<IndicatorMA, ArrayList<Vector>> entry : maMap.entrySet()) {
+                double maY = candle.getFocusY() - (entry.getKey().getCloseValue(candle.getOpenTime()) * candle.getScale().getY()) + candle.getFocusPrice() * candle.getScale().getY();
+                if (entry.getKey().getCloseValue(candle.getOpenTime()) != -1)
+                    entry.getValue().add(new Vector(candle.getPos().getX() + (candle.getBodySize().getX() / 2), maY));//This is a little buggy with precise positioning of points for some reason
             }
 
+            //Add all probability related candles
+            for (int i = 0; i <= 5; i++) {
+                if (probability != null && candle.getStock().getOpenTime() != null && candle.getOpenTime().equals(candle.getStock().getOpenTime().getAdded(i * -candle.getStock().getTimeFrame().getSeconds())))
+                    probabilityCandles.add(candle);
+            }
+
+        }
+
+        //Draw Probability Indicator
+        if (probability != null) drawProbabilityIndicator(scene, probability, probabilityCandles);
+
+        //Draw MA Lines
+        drawMAs(maMap);
+
+    }
+
+    private static void drawProbabilityIndicator(Scene scene, IndicatorProbability indicatorProbability, ArrayList<CandleUI> probabilityCandles) {
+        if (indicatorProbability.getStock().getOpenTime() == null) return;
+        for (CandleUI candle : probabilityCandles) {
             //Draw Probability Bounds
-            if (candle.getOpenTime().equals(candle.getStock().getOpenTime()) && isProbabilityActive) {
+            if (candle.getOpenTime().equals(candle.getStock().getOpenTime())) {
                 Vector sceneSize = new Vector(1, 1000);
                 double x1 = candle.getPos().getX();
-                double x2 = candle.getPos().getX() - 5 * (candle.getWidth() + 4)*candle.getScale().getX();
+                double x2 = candle.getPos().getX() - (indicatorProbability.getPatternLookBackAmount() + 1) * (candle.getWidth() + 4) * candle.getScale().getX();
                 LineUI lineEnd = new LineUI(new Vector(x1, 0), new Vector(x1, sceneSize.getY()), ColorE.WHITE, LineUI.Type.DASHED, 1);
                 LineUI lineStart = new LineUI(new Vector(x2, 0), new Vector(x2, sceneSize.getY()), ColorE.WHITE, LineUI.Type.DASHED, 1);
                 lineEnd.draw();
@@ -60,34 +80,37 @@ public class RenderUtil {
             }
 
             //Draw Probability Lines
-            for (int i = 1; i <= 4; i++) {
-                if (candle.getOpenTime().equals(candle.getStock().getOpenTime().getAdded(i * -candle.getStock().getTimeFrame().getSeconds())) && isProbabilityActive) {
+            for (int i = 1; i <= 5; i++) {
+                if (candle.getOpenTime().equals(candle.getStock().getOpenTime().getAdded(i * -candle.getStock().getTimeFrame().getSeconds()))) {
                     DateTime drawTime = candle.getOpenTime();
-                    for (Indicator indicator : indicators) {
-                        if (indicator instanceof IndicatorProbability ind) {
-                            float[] data = ind.getData(drawTime);
-                            ColorE color = ColorE.PURPLE;
-                            if (data[4] > 50) color = ColorE.GREEN;
-                            if (data[5] > 50) color = ColorE.RED;
-                            LineUI line = new LineUI(candle.getPos().getAdded(candle.getScale().getX() * (ind.getPredictionForwardAmount() * (candle.getWidth() + 4)),candle.getBodySize().getY()),candle.getPos().getAdded(candle.getScale().getX() * (ind.getPredictionForwardAmount() * (candle.getWidth() + 4) + candle.getWidth()),candle.getBodySize().getY()),color, LineUI.Type.PLAIN,2);
-                            line.draw();
-                            break;
-                        }
-                    }
+                    float[] data = indicatorProbability.getData(drawTime);
+                    ColorE color = ColorE.PURPLE;
+                    if (data[4] > 50) color = ColorE.GREEN;
+                    if (data[5] > 50) color = ColorE.RED;
+                    Vector linePos = candle.getPos().getAdded(candle.getScale().getX() * (indicatorProbability.getPredictionForwardAmount() * (candle.getWidth() + 4)), candle.getBodySize().getY());
+                    LineUI line = new LineUI(linePos, linePos.getAdded(candle.getWidth() * candle.getScale().getX(), 0), color, LineUI.Type.PLAIN, 2);
+                    line.draw();
+                    String percentage = color.equals(ColorE.GREEN) ? String.valueOf(data[4]) : color.equals(ColorE.RED) ? String.valueOf(data[5]) : "50.0";
+                    QuickDraw.drawTextCentered("(" + (int) data[0] + ")\\n" + percentage + "%" + "\\n$" + data[3], Fonts.getDefaultFont(10), candle.getPos().getAdded(indicatorProbability.getPredictionForwardAmount() * ((candle.getWidth() + 4) * candle.getScale().getX()), candle.getBodySize().getY()).getAdded(0, 20), new Vector(((candle.getWidth() + 4) * candle.getScale().getX()), 0), ColorE.WHITE);
+                    break;
                 }
             }
         }
 
-        //Draw MA Lines
-        for (int i = 0; i < maList.size(); i++) {
-            IndicatorMA ma = maList.get(i);
-            ArrayList<Vector> points = listPointsMAs.get(i);
+        //Draw Circle Indicator
+        int size = 100;
+        RenderProbabilityUI render = new RenderProbabilityUI(indicatorProbability, Vector.NULL, size, indicatorProbability.getStock().getOpenTime().getAdded(-indicatorProbability.getStock().getTimeFrame().getSeconds()));
+        render.setPos(scene.getSize().getSubtracted(size, size));
+        render.draw(scene, scene.getWindow().getScaledMousePos());
+    }
+
+    private static void drawMAs(HashMap<IndicatorMA, ArrayList<Vector>> maMap) {
+        for (Map.Entry<IndicatorMA, ArrayList<Vector>> entry : maMap.entrySet()) {
             try {
-                new LineUI(ma.getColor(), LineUI.Type.PLAIN, 4d, points.toArray(new Vector[0])).draw();
+                new LineUI(entry.getKey().getColor(), LineUI.Type.PLAIN, 4d, entry.getValue().toArray(new Vector[0])).draw();
             } catch (Exception ignored) {
             }
         }
-
     }
 
     //Size default is 20

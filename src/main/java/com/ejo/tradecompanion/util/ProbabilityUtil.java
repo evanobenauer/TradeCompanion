@@ -6,6 +6,7 @@ import com.ejo.glowlib.time.DateTime;
 import com.ejo.tradecompanion.data.Stock;
 
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,7 +14,7 @@ public class ProbabilityUtil {
 
     //TODO: maybe add time of day & weekday probability
     //TODO: Find a way to throw out garbage data from 2000-2003. It messes stuff up. Maybe just exclude it?
-    //TODO: Add previous calculation section back to the last 3 so they can be compared especially when working with live data
+    //TODO: Add previous calculation section back to the last 3, so they can be compared especially when working with live data
 
     //TODO: Add an option to look back only a certain timeframe to make pattern recognition more reflective of current market trends
 
@@ -39,36 +40,39 @@ public class ProbabilityUtil {
         float[] mainData = stock.getData(candleTime);
         long mainID = candleTime.getDateTimeID();
 
+        try {
+            for (Map.Entry<Long, float[]> rawData : stock.getHistoricalData().entrySet()) { //Loops through all stock data; This may throw a concurrent modification exception
+                float[] testData = rawData.getValue();
+                long testID = rawData.getKey();
 
-        for (Map.Entry<Long, float[]> rawData : stock.getHistoricalData().entrySet()) { //Loops through all stock data; This may throw a concurrent modification exception
-            float[] testData = rawData.getValue();
-            long testID = rawData.getKey();
+                DateTime testTime = new DateTime(testID);
 
-            DateTime testTime = new DateTime(testID);
+                if (testID == mainID) continue;
+                if (!includeAfterHours && !StockUtil.isTradingHours(testTime)) continue;
+                if (testID < 20040000000000L) continue;//TEMPORARY REMOVE EARLY DATA. IT SUCKS, TODO: Get rid of this line whenever. IT currently removes <2004 data
 
-            if (testID == mainID) continue;
-            if (!includeAfterHours && !StockUtil.isTradingHours(testTime)) continue;
-            if (testID < 20040000000000L) continue;//TEMPORARY REMOVE EARLY DATA. IT SUCKS
+                if (areCandlesSimilar(mainData, testData, marginPrice, doPriceScaling, ignoreWicks)) {
+                    float[] nextData = stock.getData(testTime.getAdded(timeOffset));
+                    float[] lookForwardData = stock.getData(testTime.getAdded(timeOffset * lookForwardAmount));
+                    if (nextData[0] == -1 || lookForwardData[0] == -1) continue;
 
-            if (areCandlesSimilar(mainData, testData, marginPrice, doPriceScaling, ignoreWicks)) {
-                float[] nextData = stock.getData(testTime.getAdded(timeOffset));
-                float[] lookForwardData = stock.getData(testTime.getAdded(timeOffset * lookForwardAmount));
-                if (nextData[0] == -1 || lookForwardData[0] == -1) continue;
+                    //Next Candle Data
+                    if (nextData[1] > nextData[0]) nextGreen++;
+                    if (nextData[1] < nextData[0]) nextRed++;
 
-                //Next Candle Data
-                if (nextData[1] > nextData[0]) nextGreen++;
-                if (nextData[1] < nextData[0]) nextRed++;
+                    //Forward Prediction
+                    float testClose = testData[1];
+                    float lookForwardClose = lookForwardData[1];
+                    lookForwardAvgChange += lookForwardClose - testClose;
+                    if (lookForwardClose > testClose) lookForwardGreen++;
+                    if (lookForwardClose < testClose) lookForwardRed++;
 
-                //Forward Prediction
-                float testClose = testData[1];
-                float lookForwardClose = lookForwardData[1];
-                lookForwardAvgChange += lookForwardClose - testClose;
-                if (lookForwardClose > testClose) lookForwardGreen++;
-                if (lookForwardClose < testClose) lookForwardRed++;
-
-                similarCandleList.add(testID);
-                similarCandleCount++;
+                    similarCandleList.add(testID);
+                    similarCandleCount++;
+                }
             }
+        } catch (ConcurrentModificationException e) {
+            e.printStackTrace();
         }
 
         //Calculate Average Close in Three Candles

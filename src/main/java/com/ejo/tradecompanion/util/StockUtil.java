@@ -12,31 +12,6 @@ public class StockUtil {
 
     public static final Container<Integer> SECOND_ADJUST = new Container<>(0);
 
-    private static final String WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36";
-
-    //TODO: This is very dependent on internet speed. Maybe put it on its own thread as not to mess up stuff
-    public static float getWebScrapePrice(String url, String attributeKey, String attributeValue, int priceIndex) throws IOException {
-        try {
-            Document doc = Jsoup.connect(url).userAgent(WEB_USER_AGENT).timeout(5 * 1000).get();
-            Elements cssElements = doc.getElementsByAttributeValue(attributeKey, attributeValue);
-            String priceString = cssElements.get(priceIndex).text().replace("$", "");
-            return priceString.equals("") ? -1 : Float.parseFloat(priceString);
-        } catch (IndexOutOfBoundsException e) {
-            return -1;
-        }
-    }
-
-    public static float getWebScrapePrice(String url, String cssQuery, int priceIndex) throws IOException {
-        try {
-            Document doc = Jsoup.connect(url).userAgent(WEB_USER_AGENT).timeout(5 * 1000).get();
-            Elements cssElements = doc.select(cssQuery);
-            String priceString = cssElements.get(priceIndex).text().replace("$", "");
-            return priceString.equals("") ? -1 : Float.parseFloat(priceString);
-        } catch (IndexOutOfBoundsException e) {
-            return -1;
-        }
-    }
-
     public static boolean isTradingHours(DateTime currentTime) {
         return !currentTime.isWeekend() && currentTime.getHour() < 16 && currentTime.getHour() >= 9 && (currentTime.getHour() != 9 || currentTime.getMinute() >= 30);
     }

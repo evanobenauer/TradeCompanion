@@ -12,6 +12,7 @@ import java.util.Map;
 
 public abstract class HistoricalDataContainer {
 
+    //TODO: Maybe change this to a LinkedHashMap as it will be more efficient at iteration for probability, but it requires a lot more memory i believe
     protected HashMap<Long, float[]> dataHash = new HashMap<>();
 
     private final Container<Double> progressContainer = new Container<>(0d);
@@ -183,11 +184,13 @@ public abstract class HistoricalDataContainer {
                 currentRow += 1;
                 getProgressContainer().set((double) currentRow / fileSize / 2 + .5);
             }
+            System.gc();
             this.progressActive = false;
             return true;
         } catch (IOException | SecurityException e) {
             e.printStackTrace();
         }
+        System.gc();
         this.progressActive = false;
         return false;
     }

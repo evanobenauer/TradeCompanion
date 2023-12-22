@@ -15,20 +15,24 @@ import com.ejo.tradecompanion.util.ChartUtil;
 public class RenderProbabilityUI extends ElementUI {
 
     private final IndicatorProbability indicator;
+    private final DateTime dateTime;
 
-    public RenderProbabilityUI(IndicatorProbability indicator, Vector pos, int size) {
+    private final int size;
+
+    public RenderProbabilityUI(IndicatorProbability indicator, Vector pos, int size, DateTime dateTime) {
         super(pos, true, true);
         this.indicator = indicator;
+        this.size = size;
+        this.dateTime = dateTime;
     }
 
     @Override
     protected void drawElement(Scene scene, Vector mousePos) {
-        //if (true) return;
         if (getIndicator().getStock().getOpenTime() == null) return;
-        CircleUI circle = new CircleUI(Vector.NULL, ChartUtil.WIDGET_COLOR.alpha(100),100, CircleUI.Type.ULTRA);
+        CircleUI circle = new CircleUI(Vector.NULL, ChartUtil.WIDGET_COLOR.alpha(100),size, CircleUI.Type.ULTRA);
         circle.setPos(scene.getSize().getSubtracted(circle.getRadius(),circle.getRadius()));
         circle.draw();
-        DateTime calcTime = getIndicator().getStock().getOpenTime().getAdded(-getIndicator().getStock().getTimeFrame().getSeconds());
+        DateTime calcTime = dateTime;
         float[] results = getIndicator().getData(calcTime);
 
         String candles = String.valueOf((int)results[0]);
@@ -40,27 +44,27 @@ public class RenderProbabilityUI extends ElementUI {
         String runTime = String.valueOf(MathE.roundDouble(getIndicator().getPrevCalcRuntime(), 3));//String.valueOf((int)results[6]);
 
         //DateTime
-        QuickDraw.drawTextCentered(calcTime.toString().split(" ")[1],Fonts.getDefaultFont(15),getPos().getSubtracted(0,76),Vector.NULL,ColorE.WHITE);
+        QuickDraw.drawTextCentered(calcTime.toString().split(" ")[1],Fonts.getDefaultFont(15),getPos().getSubtracted(0,size * .76),Vector.NULL,ColorE.WHITE);
 
         //Candle Count
-        QuickDraw.drawTextCentered(candles,Fonts.getDefaultFont(15),getPos().getSubtracted(0,90),Vector.NULL,ColorE.WHITE);
+        QuickDraw.drawTextCentered(candles,Fonts.getDefaultFont(15),getPos().getSubtracted(0,size * .9),Vector.NULL,ColorE.WHITE);
 
-        int yInc = 50;
-        QuickDraw.drawTextCentered("Next Candle:", Fonts.getDefaultFont(15),getPos().getSubtracted(0,100 - yInc),Vector.NULL,ColorE.WHITE);
-        yInc += 6;
-        QuickDraw.drawText(plus1Green + "%",Fonts.getDefaultFont(15),getPos().getSubtracted(60,100 - yInc),ColorE.GREEN);
-        QuickDraw.drawText(plus1Red + "%",Fonts.getDefaultFont(15),getPos().getSubtracted(-20,100 - yInc),ColorE.RED);
-        yInc += 40;
+        int yInc = (int)(size * .5);
+        QuickDraw.drawTextCentered("Next Candle:", Fonts.getDefaultFont(15),getPos().getSubtracted(0,size - yInc),Vector.NULL,ColorE.WHITE);
+        yInc += size * .06;
+        QuickDraw.drawText(plus1Green + "%",Fonts.getDefaultFont(15),getPos().getSubtracted(size * .6,size - yInc),ColorE.GREEN);
+        QuickDraw.drawText(plus1Red + "%",Fonts.getDefaultFont(15),getPos().getSubtracted(-size * .2,size - yInc),ColorE.RED);
+        yInc += size * .4;
 
-        QuickDraw.drawTextCentered("Change in " + getIndicator().getPredictionForwardAmount() + " Candles:", Fonts.getDefaultFont(15),getPos().getSubtracted(0,100 - yInc),Vector.NULL,ColorE.WHITE);
-        yInc += 17;
+        QuickDraw.drawTextCentered("Change in " + getIndicator().getPredictionForwardAmount() + " Candles:", Fonts.getDefaultFont(15),getPos().getSubtracted(0,size - yInc),Vector.NULL,ColorE.WHITE);
+        yInc += size * .17;
 
-        QuickDraw.drawTextCentered("$" + plus5AvgChange,Fonts.getDefaultFont(15),getPos().getSubtracted(0,100 - yInc),Vector.NULL,ColorE.WHITE);
-        yInc += 10;
-        QuickDraw.drawText(plus5Rise + "%",Fonts.getDefaultFont(15),getPos().getSubtracted(60,100 - yInc),ColorE.GREEN);
-        QuickDraw.drawText(plus5Fall + "%",Fonts.getDefaultFont(15),getPos().getSubtracted(-20,100 - yInc),ColorE.RED);
-        yInc += 44;
-        QuickDraw.drawTextCentered(runTime + "s",Fonts.getDefaultFont(15),getPos().getSubtracted(0,100 - yInc),Vector.NULL,ColorE.WHITE);
+        QuickDraw.drawTextCentered("$" + plus5AvgChange,Fonts.getDefaultFont(15),getPos().getSubtracted(0,size - yInc),Vector.NULL,ColorE.WHITE);
+        yInc += size * .1;
+        QuickDraw.drawText(plus5Rise + "%",Fonts.getDefaultFont(15),getPos().getSubtracted(size * .6,size - yInc),ColorE.GREEN);
+        QuickDraw.drawText(plus5Fall + "%",Fonts.getDefaultFont(15),getPos().getSubtracted(-size * .2,size - yInc),ColorE.RED);
+        yInc += size * .44;
+        QuickDraw.drawTextCentered(runTime + "s",Fonts.getDefaultFont(15),getPos().getSubtracted(0,size - yInc),Vector.NULL,ColorE.WHITE);
     }
 
     @Override

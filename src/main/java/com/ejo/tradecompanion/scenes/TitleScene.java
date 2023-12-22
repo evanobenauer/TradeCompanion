@@ -15,6 +15,7 @@ import com.ejo.glowui.scene.elements.widget.TextFieldUI;
 import com.ejo.glowui.scene.elements.widget.ToggleUI;
 import com.ejo.tradecompanion.data.Stock;
 import com.ejo.tradecompanion.util.TimeFrame;
+import com.ejo.tradecompanion.web.StockScraper;
 
 import java.awt.*;
 
@@ -41,12 +42,10 @@ public class TitleScene extends Scene {
 
         Thread thread = new Thread(() -> {
             SettingManager.getDefaultManager().saveAll();
-            this.stock = new Stock(stockTicker.get(),timeFrame.get(),extendedHours.get(), Stock.PriceSource.MARKETWATCH,false);
+            this.stock = new Stock(stockTicker.get(),timeFrame.get(),extendedHours.get(), StockScraper.PriceSource.MARKETWATCH,false);
             progressBarLoadStock.setContainer(stock.getProgressContainer());
             stock.loadHistoricalData();
-            //getWindow().setScene(new ChartViewScene(stock));
             getWindow().setScene(new ChartViewScene(stock));
-            //getWindow().setScene(new ProbabilityScene());
         });
         thread.setDaemon(true);
         thread.start();

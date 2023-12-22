@@ -19,6 +19,7 @@ import com.ejo.tradecompanion.elements.CandleUI;
 import com.ejo.tradecompanion.util.ProbabilityUtil;
 import com.ejo.tradecompanion.util.RenderUtil;
 import com.ejo.tradecompanion.util.TimeFrame;
+import com.ejo.tradecompanion.web.StockScraper;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,7 +31,7 @@ import java.util.Map;
  */
 public class ProbabilityScene extends Scene {
 
-    Stock stock = new Stock("SPY", TimeFrame.ONE_MINUTE,true, Stock.PriceSource.MARKETWATCH);
+    Stock stock = new Stock("SPY", TimeFrame.ONE_MINUTE,true, StockScraper.PriceSource.MARKETWATCH);
     DateTime time = new DateTime(2023,9,21,11,4,0);
 
     TextUI text = new TextUI("", Fonts.getDefaultFont(30),Vector.NULL,ColorE.WHITE);

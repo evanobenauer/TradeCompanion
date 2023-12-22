@@ -41,13 +41,6 @@ import java.util.ConcurrentModificationException;
 
 public class ChartViewScene extends Scene {
 
-
-    //TODO: Indicators Button
-    // where you can add different indicators from a modecycle. In the future, replace the modecycle with a dropdown
-    // Make sure to have the indicator list be savable.
-    // Make sure to create a visual indicator for the probability
-
-
     //Define Stock (If the stock needs to be changed, switch to a new scene)
     private final Stock stock;
 
@@ -94,8 +87,9 @@ public class ChartViewScene extends Scene {
             for (Indicator i : listDisplayIndicator.getList()) if (i.isProgressActive()) return;
             Indicator indicator = switch (modeCycleIndicator.getContainer().get()) {
                 case "SMA" -> new IndicatorSMA(getStock(), 50);
-                case "EMA" -> new IndicatorEMA(getStock(), 50);
-                case "Probability" -> new IndicatorProbability(getStock(),.03f,4,5,false,true,false);
+                case "EMA" -> new IndicatorEMA(getStock(), 200);
+                //case "Probability" -> new IndicatorProbability(getStock(),.03f,4,5,false,true,false);
+                case "Probability" -> new IndicatorProbability(getStock(),.03f,3,5,false,true,false);
                 default -> null;
             };
             assert indicator != null;
@@ -167,17 +161,7 @@ public class ChartViewScene extends Scene {
         new GradientRectangleUI(Vector.NULL, getSize(), new ColorE(0, 255, 255).alpha(20), new ColorE(0, 0, 0), GradientRectangleUI.Type.VERTICAL).draw();
 
         //Draw Candles & Indicators
-        RenderUtil.drawAllData(candleList, listIndicator.toArray(new Indicator[0]));
-
-        //TODO: Test below: Draw probability indicator. Reroute Later
-        for (Indicator indicator : listIndicator) {
-            if (indicator instanceof IndicatorProbability prob) {
-                RenderProbabilityUI render = new RenderProbabilityUI(prob,Vector.NULL, 100);
-                render.setPos(getSize().getSubtracted(100,100));
-                render.draw(this,getWindow().getScaledMousePos());
-                break;
-            }
-        }
+        RenderUtil.drawAllData(this,candleList, listIndicator.toArray(new Indicator[0]));
 
         //Draw Close Percent Progress Bar
         ProgressBarUI<Double> progressBarClosePercent = new ProgressBarUI<>(Vector.NULL, new Vector(100, 20), ColorE.BLUE, getStock().getClosePercent(), 0, 1);
