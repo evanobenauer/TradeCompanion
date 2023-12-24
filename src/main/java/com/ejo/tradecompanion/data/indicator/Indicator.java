@@ -1,18 +1,11 @@
 package com.ejo.tradecompanion.data.indicator;
 
-import com.ejo.glowlib.file.FileManager;
-import com.ejo.glowlib.setting.Container;
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowlib.time.StopWatch;
 import com.ejo.tradecompanion.data.HistoricalDataContainer;
 import com.ejo.tradecompanion.data.Stock;
 import com.ejo.tradecompanion.util.StockUtil;
 import com.ejo.tradecompanion.util.TimeUtil;
-
-import java.io.*;
-import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.HashMap;
 
 public abstract class Indicator extends HistoricalDataContainer {
 
@@ -51,7 +44,7 @@ public abstract class Indicator extends HistoricalDataContainer {
     /**
      * Calculates all indicator data depending on the stock values/historical values
      */
-    public abstract float[] calculateData(DateTime dateTime); //TODO: Implement live web scraping
+    public abstract float[] calculateData(DateTime dateTime);
 
 
     /**

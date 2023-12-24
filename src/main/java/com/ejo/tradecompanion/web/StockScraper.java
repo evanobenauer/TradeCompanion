@@ -10,6 +10,17 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.util.HashMap;
 
+/*
+* POTENTIAL WEBSITES TO SCRAPE FROM
+* Daily, Weekly, Monthly Data: https://www.investing.com/etfs/spdr-s-p-500-historictal-data
+* 1MIN, 5MIN, 15MIN, 30MIN, 1HR, 5HR:  (Tooltip data is stored in HTML. IF you can find a way to move the mouse across and scan, it should work)
+*    https://www.marketwatch.com/investing/fund/spy/charts?mod=mw_quote_advanced
+*    https://www.investing.com/etfs/spdr-s-p-500
+*    https://medium.com/@rushic24/how-i-webscraped-1-minute-stock-data-from-tradingview-5bc9b4a823a9
+*
+*
+ */
+
 public class StockScraper {
 
     private static final String WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36";

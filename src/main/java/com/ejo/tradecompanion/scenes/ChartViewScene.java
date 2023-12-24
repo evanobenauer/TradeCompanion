@@ -18,19 +18,14 @@ import com.ejo.glowui.scene.elements.widget.ButtonUI;
 import com.ejo.glowui.scene.elements.widget.ModeCycleUI;
 import com.ejo.glowui.util.Key;
 import com.ejo.glowui.util.Mouse;
-import com.ejo.glowui.util.Util;
 import com.ejo.glowui.util.render.Fonts;
 import com.ejo.glowui.util.render.QuickDraw;
 import com.ejo.stockdownloader.data.api.AlphaVantageDownloader;
 import com.ejo.stockdownloader.util.DownloadTimeFrame;
 import com.ejo.tradecompanion.data.Stock;
-import com.ejo.tradecompanion.data.indicator.IndicatorProbability;
+import com.ejo.tradecompanion.data.indicator.*;
 import com.ejo.tradecompanion.elements.CandleUI;
 import com.ejo.tradecompanion.elements.ListDisplayUI;
-import com.ejo.tradecompanion.data.indicator.Indicator;
-import com.ejo.tradecompanion.data.indicator.IndicatorEMA;
-import com.ejo.tradecompanion.data.indicator.IndicatorSMA;
-import com.ejo.tradecompanion.elements.RenderProbabilityUI;
 import com.ejo.tradecompanion.util.ChartUtil;
 import com.ejo.tradecompanion.util.ProbabilityUtil;
 import com.ejo.tradecompanion.util.RenderUtil;
@@ -81,13 +76,14 @@ public class ChartViewScene extends Scene {
 
     private final SideBarUI indicatorBar = new SideBarUI(SideBarUI.Type.LEFT, 160, true, ChartUtil.WIDGET_COLOR.alpha(120),
             new TextUI("Add Indicator", Fonts.getDefaultFont(20), new Vector(22, yVal), ColorE.WHITE)
-            , modeCycleIndicator = new ModeCycleUI<>(new Vector(20, yVal += 30), new Vector(120, 30), ChartUtil.WIDGET_COLOR, new Container<>("SMA"), "SMA", "EMA", "Probability")
+            , modeCycleIndicator = new ModeCycleUI<>(new Vector(20, yVal += 30), new Vector(120, 30), ChartUtil.WIDGET_COLOR, new Container<>("SMA"), "SMA", "EMA", "Probability", "MACD")
             , listDisplayIndicator = new ListDisplayUI<>(new Vector(80, 0), listIndicator).setFontSize(30)
             , buttonAddIndicator = new ButtonUI("Add", new Vector(20, yVal += 50), new Vector(120, 30), ChartUtil.WIDGET_COLOR, ButtonUI.MouseButton.LEFT, () -> {
             for (Indicator i : listDisplayIndicator.getList()) if (i.isProgressActive()) return;
             Indicator indicator = switch (modeCycleIndicator.getContainer().get()) {
                 case "SMA" -> new IndicatorSMA(getStock(), 50);
                 case "EMA" -> new IndicatorEMA(getStock(), 200);
+                case "MACD" -> new IndicatorMACD(getStock(), 16,21);
                 //case "Probability" -> new IndicatorProbability(getStock(),.03f,4,5,false,true,false);
                 case "Probability" -> new IndicatorProbability(getStock(),.03f,3,5,false,true,false);
                 default -> null;

@@ -49,10 +49,11 @@ public class IndicatorSMA extends IndicatorMA {
 
         float openAvg = (float) MathE.roundDouble(calculateAverage(openAvgList),4);
         float closeAvg = (float) MathE.roundDouble(calculateAverage(closeAvgList),4);
-        getHistoricalData().put(dateTime.getDateTimeID(), new float[]{openAvg ,closeAvg});
+        float[] result = new float[]{openAvg ,closeAvg};
+        getHistoricalData().put(dateTime.getDateTimeID(), result);
         this.currentCalculationDate = dateTime;
 
-        return new float[]{openAvg,closeAvg};
+        return result;
     }
 
     @Override

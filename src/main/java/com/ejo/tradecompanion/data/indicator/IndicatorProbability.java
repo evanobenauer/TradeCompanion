@@ -36,8 +36,8 @@ public class IndicatorProbability extends Indicator {
     public float[] calculateData(DateTime dateTime) {
         this.calculating = true;
         this.previousCalculationMS = 0;
-        System.out.println("---");
-        System.out.println("Starting Calculation for candle: " + dateTime);
+        //System.out.println("---");
+        //System.out.println("Starting Calculation for candle: " + dateTime);
 
         ArrayList<ArrayList<Long>> similarResultsList = new ArrayList<>();
         Container<float[]> results = new Container<>();
@@ -45,16 +45,16 @@ public class IndicatorProbability extends Indicator {
         try {
             similarResultsList.add(ProbabilityUtil.getSimilarCandleIDs(getStock(), dateTime, getPrecision(), doPriceScaling(), shouldIgnoreWicks(), shouldIncludeAfterHours(), getPredictionForwardAmount(), results));
             previousCalculationMS += results.get()[6];
-            System.out.println("---");
-            System.out.println(results.get()[0] + "\nGreen Probability: " + results.get()[1] + "%\nRed Probability: " + results.get()[2] + "%" + "\nAvg change in " + getPredictionForwardAmount() + " Candles: $" + results.get()[3] + "; +: " + results.get()[4] + "%, -: " + results.get()[5] + "%");
-            System.out.println("Run Time: " + results.get()[6] + "s");
+            //System.out.println("---");
+            //System.out.println(results.get()[0] + "\nGreen Probability: " + results.get()[1] + "%\nRed Probability: " + results.get()[2] + "%" + "\nAvg change in " + getPredictionForwardAmount() + " Candles: $" + results.get()[3] + "; +: " + results.get()[4] + "%, -: " + results.get()[5] + "%");
+            //System.out.println("Run Time: " + results.get()[6] + "s");
 
             for (int l = 1; l <= getPatternLookBackAmount(); l++) {
                 similarResultsList.add(ProbabilityUtil.filterSimilarCandlesFromPrevious(getStock(), dateTime, getPrecision(), doPriceScaling(), shouldIgnoreWicks(), shouldIncludeAfterHours(), similarResultsList.get(l - 1), l, getPredictionForwardAmount(), results));
                 previousCalculationMS += results.get()[6];
-                System.out.println("---");
-                System.out.println(results.get()[0] + "\nGreen Probability: " + results.get()[1] + "%\nRed Probability: " + results.get()[2] + "%" + "\nAvg change in " + getPredictionForwardAmount() + " Candles: $" + results.get()[3] + "; +: " + results.get()[4] + "%, -: " + results.get()[5] + "%");
-                System.out.println("Run Time: " + results.get()[6] + "s");
+                //System.out.println("---");
+                //System.out.println(results.get()[0] + "\nGreen Probability: " + results.get()[1] + "%\nRed Probability: " + results.get()[2] + "%" + "\nAvg change in " + getPredictionForwardAmount() + " Candles: $" + results.get()[3] + "; +: " + results.get()[4] + "%, -: " + results.get()[5] + "%");
+                //System.out.println("Run Time: " + results.get()[6] + "s");
                 //Possibly add a way to see every look back result
             }
             this.calculating = false;
@@ -80,7 +80,7 @@ public class IndicatorProbability extends Indicator {
     }
 
 
-    //TODO: Maybe create a save/load section for all previously calculated data to reference?
+    //TODO: Maybe create a save/load section for all previously calculated data to reference? It isn't necessary...
     @Override
     public HashMap<Long, float[]> loadHistoricalData() {
         System.out.println("Probability Indicator: No Data to Load");

@@ -2,6 +2,7 @@ package com.ejo.tradecompanion.auto;
 
 import com.ejo.tradecompanion.data.Stock;
 
+//TODO: This is planned to be the trade object for the trading bot that I plan to add in the future
 public class Trade {
 
     private final Stock stock;

@@ -13,9 +13,11 @@ import com.ejo.glowui.util.render.QuickDraw;
 import com.ejo.tradecompanion.data.Stock;
 import com.ejo.tradecompanion.data.indicator.Indicator;
 import com.ejo.tradecompanion.data.indicator.IndicatorMA;
+import com.ejo.tradecompanion.data.indicator.IndicatorMACD;
 import com.ejo.tradecompanion.data.indicator.IndicatorProbability;
 import com.ejo.tradecompanion.elements.CandleUI;
-import com.ejo.tradecompanion.elements.RenderProbabilityUI;
+import com.ejo.tradecompanion.elements.indicator.RenderMACD;
+import com.ejo.tradecompanion.elements.indicator.RenderProbability;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -31,9 +33,11 @@ public class RenderUtil {
         LinkedHashMap<IndicatorMA, ArrayList<Vector>> maMap = new LinkedHashMap<>();
         ArrayList<CandleUI> probabilityCandles = new ArrayList<>();
         IndicatorProbability probability = null;
+        IndicatorMACD macd = null;
         for (Indicator indicator : indicators) {
             if (indicator instanceof IndicatorProbability p) probability = p;
             if (indicator instanceof IndicatorMA ma) maMap.put(ma, new ArrayList<>());
+            if (indicator instanceof IndicatorMACD m) macd = m;
         }
 
         for (CandleUI candle : listCandle) {
@@ -44,10 +48,10 @@ public class RenderUtil {
 
             //Add MA points
             for (Map.Entry<IndicatorMA, ArrayList<Vector>> entry : maMap.entrySet()) {
-                double maY = candle.getFocusY() - (entry.getKey().getCloseValue(candle.getOpenTime()) * candle.getScale().getY()) + candle.getFocusPrice() * candle.getScale().getY();
-                if (entry.getKey().getCloseValue(candle.getOpenTime()) != -1)
-                    entry.getValue().add(new Vector(candle.getPos().getX() + (candle.getBodySize().getX() / 2), maY));//This is a little buggy with precise positioning of points for some reason
-            }
+                    double maY = candle.getFocusY() - (entry.getKey().getCloseValue(candle.getOpenTime()) * candle.getScale().getY()) + candle.getFocusPrice() * candle.getScale().getY();
+                    if (entry.getKey().getCloseValue(candle.getOpenTime()) != -1)
+                        entry.getValue().add(new Vector(candle.getPos().getX() + (candle.getBodySize().getX() / 2), maY));//This is a little buggy with precise positioning of points for some reason
+                }
 
             //Add all probability related candles
             for (int i = 0; i <= 5; i++) {
@@ -59,6 +63,8 @@ public class RenderUtil {
 
         //Draw Probability Indicator
         if (probability != null) drawProbabilityIndicator(scene, probability, probabilityCandles);
+
+        if (macd != null) new RenderMACD(macd,listCandle).draw(scene);
 
         //Draw MA Lines
         drawMAs(maMap);
@@ -99,7 +105,7 @@ public class RenderUtil {
 
         //Draw Circle Indicator
         int size = 100;
-        RenderProbabilityUI render = new RenderProbabilityUI(indicatorProbability, Vector.NULL, size, indicatorProbability.getStock().getOpenTime().getAdded(-indicatorProbability.getStock().getTimeFrame().getSeconds()));
+        RenderProbability render = new RenderProbability(indicatorProbability, Vector.NULL, size, indicatorProbability.getStock().getOpenTime().getAdded(-indicatorProbability.getStock().getTimeFrame().getSeconds()));
         render.setPos(scene.getSize().getSubtracted(size, size));
         render.draw(scene, scene.getWindow().getScaledMousePos());
     }

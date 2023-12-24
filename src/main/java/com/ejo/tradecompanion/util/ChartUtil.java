@@ -17,6 +17,7 @@ public class ChartUtil {
         return mousePos.getX() >= candle.getPos().getX() - candleSeparation * candle.getScale().getX() / 2 && mousePos.getX() <= candle.getPos().getX() + candle.getBodySize().getX() + candleSeparation * candle.getScale().getX() / 2;
     }
 
+    //TODO: Make this only update when needed. Currently it constantly updates and causes lag
     public static ArrayList<CandleUI> getOnScreenCandles(Scene scene, Stock stock, DateTime lastTime, int candleCount, double focusPrice, double focusY, double separation, double candleWidth, Vector candleScale) {
         ArrayList<CandleUI> listCandle = new ArrayList<>();
 
@@ -25,7 +26,7 @@ public class ChartUtil {
         while (currentCandles < candleCount) { //This is mildly inefficient. Maybe rewrite it someday ¯\_(ツ)_/¯
             DateTime candleTime = lastTime.getAdded(-loopCount * stock.getTimeFrame().getSeconds());
 
-            if (!StockUtil.isPriceActive(stock.isExtendedHours(), candleTime)) {
+            if (!StockUtil.isPriceActive(stock.isExtendedHours(), candleTime)) { //Having extended hours turned off causes a lot of lag when rendering the same amount of candles
                 loopCount++;
                 continue;
             }

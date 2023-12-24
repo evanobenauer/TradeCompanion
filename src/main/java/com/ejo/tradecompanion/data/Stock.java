@@ -1,7 +1,5 @@
 package com.ejo.tradecompanion.data;
 
-import com.ejo.glowlib.file.CSVManager;
-import com.ejo.glowlib.file.FileManager;
 import com.ejo.glowlib.misc.DoOnce;
 import com.ejo.glowlib.setting.Container;
 import com.ejo.glowlib.time.DateTime;
@@ -11,9 +9,6 @@ import com.ejo.tradecompanion.util.TimeFrame;
 import com.ejo.tradecompanion.web.StockScraper;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.HashMap;
 
 /**
  * The stock class is a multi use class. It encompasses both loading historical data and adding new data to said history. The live data is updated

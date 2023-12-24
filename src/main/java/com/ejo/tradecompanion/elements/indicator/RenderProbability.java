@@ -1,4 +1,4 @@
-package com.ejo.tradecompanion.elements;
+package com.ejo.tradecompanion.elements.indicator;
 
 import com.ejo.glowlib.math.MathE;
 import com.ejo.glowlib.math.Vector;
@@ -12,14 +12,14 @@ import com.ejo.glowui.util.render.QuickDraw;
 import com.ejo.tradecompanion.data.indicator.IndicatorProbability;
 import com.ejo.tradecompanion.util.ChartUtil;
 
-public class RenderProbabilityUI extends ElementUI {
+public class RenderProbability extends ElementUI {
 
     private final IndicatorProbability indicator;
     private final DateTime dateTime;
 
     private final int size;
 
-    public RenderProbabilityUI(IndicatorProbability indicator, Vector pos, int size, DateTime dateTime) {
+    public RenderProbability(IndicatorProbability indicator, Vector pos, int size, DateTime dateTime) {
         super(pos, true, true);
         this.indicator = indicator;
         this.size = size;

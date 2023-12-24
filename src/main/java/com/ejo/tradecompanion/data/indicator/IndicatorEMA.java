@@ -44,10 +44,11 @@ public class IndicatorEMA extends IndicatorMA {
 
         float openEMA = (float) MathE.roundDouble(open == -1 ? prevOpenEMA : open * weight + prevOpenEMA * (1 - weight), 4);
         float closeEMA = (float) MathE.roundDouble(close == -1 ? prevCloseEMA : close * weight + prevCloseEMA * (1 - weight), 4);
-        getHistoricalData().put(dateTime.getDateTimeID(), new float[]{openEMA, closeEMA});
+        float[] result = new float[]{openEMA, closeEMA};
+        getHistoricalData().put(dateTime.getDateTimeID(), result);
         this.currentCalculationDate = dateTime;
 
-        return new float[]{openEMA, closeEMA};
+        return result;
     }
 
     @Override
