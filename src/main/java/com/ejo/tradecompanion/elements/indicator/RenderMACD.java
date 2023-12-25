@@ -5,6 +5,7 @@ import com.ejo.glowlib.misc.ColorE;
 import com.ejo.glowui.scene.Scene;
 import com.ejo.glowui.scene.elements.ElementUI;
 import com.ejo.glowui.scene.elements.shape.LineUI;
+import com.ejo.glowui.util.render.QuickDraw;
 import com.ejo.tradecompanion.data.indicator.IndicatorMA;
 import com.ejo.tradecompanion.data.indicator.IndicatorMACD;
 import com.ejo.tradecompanion.elements.CandleUI;
@@ -27,19 +28,36 @@ public class RenderMACD extends ElementUI {
 
     @Override
     protected void drawElement(Scene scene, Vector mousePos) {
-        macd.getMA1().setColor(new ColorE(Color.BLUE));
-        macd.getMA2().setColor(new ColorE(Color.YELLOW));
-
-        new RenderMA(macd.getMA1(),candleList).draw(scene);
-        new RenderMA(macd.getMA2(),candleList).draw(scene);
         //TODO: Make a bar on the bottom to render the macd histogram. Use the method i prepared below, but change the maY
 
-        int focusY = 100;
-        int focusPrice = 450;
-        int scale = 20;
-        int width = 1;
-        //drawMA(macd.getMA1(),candleList,focusY,focusPrice,width,scale);
-        //drawMA(macd.getMA2(),candleList,focusY,focusPrice,width,scale);
+        int focusY = (int)scene.getSize().getY() - 100;
+        int focusPrice = 0;
+        int maScale = 120;
+        int histogramScale = 300;
+        int maWidth = 1;
+
+        QuickDraw.drawRect(new Vector(0, focusY - 100),new Vector(scene.getSize().getX() , focusY - 100),new ColorE(50,50,50,150));
+        new LineUI(new Vector(0,focusY),new Vector(scene.getSize().getX(),focusY),ColorE.WHITE, LineUI.Type.DOTTED,.5).draw();
+
+        for (CandleUI candle : candleList) {
+            float[] macdData = getMACD().getData(candle.getOpenTime());
+            float[] prevMacdData = getMACD().getData(candle.getOpenTime().getAdded(-candle.getStock().getTimeFrame().getSeconds()));
+            float prevHeight = -(prevMacdData[0] - prevMacdData[1]);
+            float height = -(macdData[0] - macdData[1]);
+            ColorE color = ColorE.WHITE;
+            if (height > 0) {
+                color = ColorE.RED;
+                if (prevHeight > height) color = ColorE.RED.alpha(150);
+            } else if (height < 0) {
+                color = ColorE.GREEN;
+                if (prevHeight < height) color = ColorE.GREEN.alpha(150);
+            }
+            if (macdData[0] != -1) QuickDraw.drawRect(new Vector(candle.getPos().getX(), focusY), new Vector(candle.getBodySize().getX(),height * histogramScale),color);
+        }
+
+
+        drawMA(macd,0,candleList,focusY,focusPrice,maWidth,maScale);
+        drawMA(macd,1,candleList,focusY,focusPrice,maWidth,maScale);
     }
 
     @Override
@@ -52,6 +70,19 @@ public class RenderMACD extends ElementUI {
         return false;
     }
 
+
+    private static void drawMA(IndicatorMACD macd, int lineIndex, ArrayList<CandleUI> candleList, int focusY, int focusPrice, int width, int scale) {
+        ArrayList<Vector> points = new ArrayList<>();
+        for (CandleUI candle : candleList) {
+            float[] macdData = macd.getData(candle.getOpenTime());
+            double maY = focusY - macdData[lineIndex] * scale + focusPrice * scale;
+            if (macdData[lineIndex] != -1) points.add(new Vector(candle.getPos().getX() + (candle.getBodySize().getX() / 2), maY));
+        }
+        try {
+            new LineUI(lineIndex == 0 ? ColorE.BLUE : ColorE.YELLOW, LineUI.Type.PLAIN, width, points.toArray(new Vector[0])).draw();
+        } catch (Exception ignored) {
+        }
+    }
 
     private static void drawMA(IndicatorMA ma, ArrayList<CandleUI> candleList, int focusY, int focusPrice, int width, int scale) {
         ArrayList<Vector> points = new ArrayList<>();

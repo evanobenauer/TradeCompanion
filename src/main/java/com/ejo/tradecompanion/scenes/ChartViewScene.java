@@ -83,7 +83,7 @@ public class ChartViewScene extends Scene {
             Indicator indicator = switch (modeCycleIndicator.getContainer().get()) {
                 case "SMA" -> new IndicatorSMA(getStock(), 50);
                 case "EMA" -> new IndicatorEMA(getStock(), 200);
-                case "MACD" -> new IndicatorMACD(getStock(), 16,21);
+                case "MACD" -> new IndicatorMACD(getStock(), 12,26,false);
                 //case "Probability" -> new IndicatorProbability(getStock(),.03f,4,5,false,true,false);
                 case "Probability" -> new IndicatorProbability(getStock(),.03f,3,5,false,true,false);
                 default -> null;
