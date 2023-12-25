@@ -17,7 +17,7 @@ public class IndicatorMACD extends Indicator {
     private final IndicatorMA ma2;
 
     private final HistoricalDataContainer MACD;
-    private final IndicatorMA indicator;
+    private final IndicatorMA signal;
 
     public IndicatorMACD(Stock stock, int lowPeriod, int highPeriod, boolean sma) {
         super(stock, false);
@@ -25,11 +25,11 @@ public class IndicatorMACD extends Indicator {
         if (sma) {
             this.ma1 = new IndicatorSMA(stock, lowPeriod);
             this.ma2 = new IndicatorSMA(stock, highPeriod);
-            this.indicator = new IndicatorSMA(stock,9);
+            this.signal = new IndicatorSMA(stock,9);
         } else {
             this.ma1 = new IndicatorEMA(stock, lowPeriod);
             this.ma2 = new IndicatorEMA(stock, highPeriod);
-            this.indicator = new IndicatorEMA(stock,9);
+            this.signal = new IndicatorEMA(stock,9);
         }
 
 
@@ -43,12 +43,14 @@ public class IndicatorMACD extends Indicator {
 
     @Override
     public float[] calculateData(DateTime dateTime) {
+        //TODO: This always starts at the sma as data is not loaded. Make a method to start at the previous ma. Maybe load the real ma file?
         float valueOpenMACD = 0; //DNE
         float valueCloseMACD = getMA1().calculateData(dateTime)[1] - getMA2().calculateData(dateTime)[1];
         this.MACD.getHistoricalData().put(dateTime.getDateTimeID(),new float[]{valueOpenMACD,valueCloseMACD});
-        float valueIndicator = sma ? calculateSMA(dateTime,this.MACD,9)[1] : calculateEMA(dateTime,indicator,this.MACD,9)[1];
 
-        float[] result = new float[]{valueCloseMACD,valueIndicator};
+        float valueSignal = sma ? calculateSMA(dateTime,this.MACD,9)[1] : calculateEMA(dateTime,this.MACD,this,9)[1];
+
+        float[] result = new float[]{valueCloseMACD,valueSignal};
         getHistoricalData().put(dateTime.getDateTimeID(), result);
         return result;
     }
@@ -78,10 +80,8 @@ public class IndicatorMACD extends Indicator {
         return ma2;
     }
 
-    private float[] calculateEMA(DateTime dateTime, IndicatorMA ema, HistoricalDataContainer historicalData, int period) {
-        float[] data = historicalData.getData(dateTime);
-        float open = data[0];
-        float close = data[1];
+    private float[] calculateEMA(DateTime dateTime, HistoricalDataContainer data, HistoricalDataContainer ma, int period) {
+        float macdClose = data.getData(dateTime)[1];
 
         double weight = (double) 2 / (period + 1);
 
@@ -92,23 +92,19 @@ public class IndicatorMACD extends Indicator {
             lastCandleTime = dateTime.getAdded( - getStock().getTimeFrame().getSeconds() * i);
         }
 
-        double prevOpenEMA;
-        double prevCloseEMA;
-        float[] prevEMA = ema.getData(lastCandleTime);
-        prevOpenEMA = prevEMA[0];
-        prevCloseEMA = prevEMA[1];
-        if (prevCloseEMA == -1 || Double.isNaN(prevCloseEMA)) { //If the previous EMA does not exist, set this value to the current SMA
-            prevOpenEMA = calculateSMA(dateTime,historicalData,period)[0];
-            prevCloseEMA = calculateSMA(dateTime,historicalData,period)[1];
+        float prevEMA = ma.getData(lastCandleTime)[1];
+        if (prevEMA == -1 || Double.isNaN(prevEMA)) { //If the previous EMA does not exist, set this value to the current SMA
+            prevEMA = calculateSMA(dateTime,data,period)[1];
         }
 
-        float openEMA = (float) MathE.roundDouble(open == -1 ? prevOpenEMA : open * weight + prevOpenEMA * (1 - weight), 4);
-        float closeEMA = (float) MathE.roundDouble(close == -1 ? prevCloseEMA : close * weight + prevCloseEMA * (1 - weight), 4);
+        float closeEMA = (float) MathE.roundDouble(macdClose == -1 ? prevEMA : macdClose * weight + prevEMA * (1 - weight), 4);
+        float[] result = new float[]{0, closeEMA};
+        this.signal.getHistoricalData().put(dateTime.getDateTimeID(), result);
 
-        return new float[]{openEMA, closeEMA};
+        return result;
     }
 
-    private float[] calculateSMA(DateTime dateTime, HistoricalDataContainer ma, int period) {
+    private float[] calculateSMA(DateTime dateTime, HistoricalDataContainer data, int period) {
         if (!StockUtil.isPriceActive(getStock().isExtendedHours(),dateTime)) return new float[]{-1,-1};
         //SMA CALCULATION
         ArrayList<Float> openAvgList = new ArrayList<>();
@@ -124,9 +120,9 @@ public class IndicatorMACD extends Indicator {
                 continue;
             }
 
-            float[] data = ma.getData(nextDate);
-            float open = data[0];
-            float close = data[1];
+            float[] values = data.getData(nextDate);
+            float open = values[0];
+            float close = values[1];
             if (open != -1) openAvgList.add(open);
             if (close != -1) closeAvgList.add(close);
 
