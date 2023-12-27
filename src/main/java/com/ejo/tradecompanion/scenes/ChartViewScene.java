@@ -74,10 +74,11 @@ public class ChartViewScene extends Scene {
     private final ButtonUI buttonAddIndicator;
 
     //MA
-    private final TextFieldUI fieldMAPeriod = new TextFieldUI(Vector.NULL,new Vector(120,30),ColorE.WHITE,new Container<>(""),"Period",true);
-    private final ModeCycleUI<IndicatorMA.Type> modeMAType = new ModeCycleUI<>(Vector.NULL,new Vector(120,30),ChartUtil.WIDGET_COLOR,new Container<>(IndicatorMA.Type.CLOSE), IndicatorMA.Type.values());
-    private final ModeCycleUI<String> modeMAColor = new ModeCycleUI<>(Vector.NULL,new Vector(120,30),ChartUtil.WIDGET_COLOR,new Container<>("Yellow"),"Red","Orange","Yellow","Green","Blue","Purple","White","Black");
-    private final SliderUI<Integer> sliderMAWidth = new SliderUI<>("Width",Vector.NULL,new Vector(120,30),ChartUtil.WIDGET_COLOR,new Container<>(1),1,10,1, SliderUI.Type.INTEGER,true);
+    private final Vector optionSize = new Vector(100,30);
+    private final TextFieldUI fieldMAPeriod = new TextFieldUI(Vector.NULL,optionSize,ColorE.WHITE,new Container<>(""),"Period",true);
+    private final ModeCycleUI<IndicatorMA.Type> modeMAType = new ModeCycleUI<>(Vector.NULL,optionSize,ChartUtil.WIDGET_COLOR,new Container<>(IndicatorMA.Type.CLOSE), IndicatorMA.Type.values());
+    private final ModeCycleUI<String> modeMAColor = new ModeCycleUI<>(Vector.NULL,optionSize,ChartUtil.WIDGET_COLOR,new Container<>("Yellow"),"Red","Orange","Yellow","Green","Blue","Purple","White","Black");
+    private final SliderUI<Integer> sliderMAWidth = new SliderUI<>("Width",Vector.NULL,optionSize,ChartUtil.WIDGET_COLOR,new Container<>(1),1,10,1, SliderUI.Type.INTEGER,true);
 
     private final SideBarUI indicatorBar = new SideBarUI(SideBarUI.Type.LEFT, 160, true, ChartUtil.WIDGET_COLOR.alpha(120),
             new TextUI("Add Indicator", Fonts.getDefaultFont(20), new Vector(22, yVal), ColorE.WHITE)
@@ -391,13 +392,14 @@ public class ChartViewScene extends Scene {
         switch (modeCycleIndicator.getContainer().get()) {
             case "SMA", "EMA" -> {
                 int inc = 50;
-                fieldMAPeriod.setPos(new Vector(20, yVal + inc));
+                int startX = 30;
+                fieldMAPeriod.setPos(new Vector(startX, yVal + inc));
                 inc += 50;
-                modeMAType.setPos(new Vector(20, yVal + inc));
+                modeMAType.setPos(new Vector(startX, yVal + inc));
                 inc += 50;
-                modeMAColor.setPos(new Vector(20,yVal + inc));
+                modeMAColor.setPos(new Vector(startX,yVal + inc));
                 inc += 50;
-                sliderMAWidth.setPos(new Vector(20,yVal + inc));
+                sliderMAWidth.setPos(new Vector(startX,yVal + inc));
 
 
                 fieldMAPeriod.setEnabled(true);
