@@ -8,12 +8,16 @@ public abstract class IndicatorMA extends Indicator {
 
     private final int period;
 
+    private Type type;
     private ColorE color;
+    private int lineWidth;
 
-    public IndicatorMA(Stock stock, boolean loadOnInstantiation, int period, ColorE color) {
+    public IndicatorMA(Stock stock, boolean loadOnInstantiation, int period, Type type, ColorE color, int lineWidth) {
         super(stock, loadOnInstantiation);
         this.period = period;
+        this.type = type;
         this.color = color;
+        this.lineWidth = lineWidth;
     }
 
     @Override
@@ -53,7 +57,32 @@ public abstract class IndicatorMA extends Indicator {
         return period;
     }
 
+
+    public Type getType() {
+        return type;
+    }
+
     public ColorE getColor() {
         return color;
     }
+
+    public int getLineWidth() {
+        return lineWidth;
+    }
+
+
+    public enum Type {
+        OPEN(0),
+        CLOSE(1);
+
+        final int index;
+        Type(int index) {
+            this.index = index;
+        }
+
+        public int getIndex() {
+            return index;
+        }
+    }
+
 }

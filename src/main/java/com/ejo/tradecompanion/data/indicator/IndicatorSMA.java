@@ -12,8 +12,8 @@ public class IndicatorSMA extends IndicatorMA {
 
     private DateTime currentCalculationDate;
 
-    public IndicatorSMA(Stock stock, int period) {
-        super(stock,false,period, ColorE.BLUE);
+    public IndicatorSMA(Stock stock, int period, Type type, ColorE color, int lineWidth) {
+        super(stock,false,period, type, color, lineWidth);
     }
 
     /**

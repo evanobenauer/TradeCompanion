@@ -16,6 +16,8 @@ import com.ejo.glowui.scene.elements.shape.GradientRectangleUI;
 import com.ejo.glowui.scene.elements.shape.LineUI;
 import com.ejo.glowui.scene.elements.widget.ButtonUI;
 import com.ejo.glowui.scene.elements.widget.ModeCycleUI;
+import com.ejo.glowui.scene.elements.widget.SliderUI;
+import com.ejo.glowui.scene.elements.widget.TextFieldUI;
 import com.ejo.glowui.util.Key;
 import com.ejo.glowui.util.Mouse;
 import com.ejo.glowui.util.render.Fonts;
@@ -26,10 +28,7 @@ import com.ejo.tradecompanion.data.Stock;
 import com.ejo.tradecompanion.data.indicator.*;
 import com.ejo.tradecompanion.elements.CandleUI;
 import com.ejo.tradecompanion.elements.ListDisplayUI;
-import com.ejo.tradecompanion.util.ChartUtil;
-import com.ejo.tradecompanion.util.ProbabilityUtil;
-import com.ejo.tradecompanion.util.RenderUtil;
-import com.ejo.tradecompanion.util.StockUtil;
+import com.ejo.tradecompanion.util.*;
 
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
@@ -74,16 +73,23 @@ public class ChartViewScene extends Scene {
     private final ListDisplayUI<Indicator> listDisplayIndicator;
     private final ButtonUI buttonAddIndicator;
 
+    //MA
+    private final TextFieldUI fieldMAPeriod = new TextFieldUI(Vector.NULL,new Vector(120,30),ColorE.WHITE,new Container<>(""),"Period",true);
+    private final ModeCycleUI<IndicatorMA.Type> modeMAType = new ModeCycleUI<>(Vector.NULL,new Vector(120,30),ChartUtil.WIDGET_COLOR,new Container<>(IndicatorMA.Type.CLOSE), IndicatorMA.Type.values());
+    private final ModeCycleUI<String> modeMAColor = new ModeCycleUI<>(Vector.NULL,new Vector(120,30),ChartUtil.WIDGET_COLOR,new Container<>("Yellow"),"Red","Orange","Yellow","Green","Blue","Purple","White","Black");
+    private final SliderUI<Integer> sliderMAWidth = new SliderUI<>("Width",Vector.NULL,new Vector(120,30),ChartUtil.WIDGET_COLOR,new Container<>(1),1,10,1, SliderUI.Type.INTEGER,true);
+
     private final SideBarUI indicatorBar = new SideBarUI(SideBarUI.Type.LEFT, 160, true, ChartUtil.WIDGET_COLOR.alpha(120),
             new TextUI("Add Indicator", Fonts.getDefaultFont(20), new Vector(22, yVal), ColorE.WHITE)
             , modeCycleIndicator = new ModeCycleUI<>(new Vector(20, yVal += 30), new Vector(120, 30), ChartUtil.WIDGET_COLOR, new Container<>("SMA"), "SMA", "EMA", "Probability", "MACD")
             , listDisplayIndicator = new ListDisplayUI<>(new Vector(80, 0), listIndicator).setFontSize(30)
+
             , buttonAddIndicator = new ButtonUI("Add", new Vector(20, yVal += 50), new Vector(120, 30), ChartUtil.WIDGET_COLOR, ButtonUI.MouseButton.LEFT, () -> {
             for (Indicator i : listDisplayIndicator.getList()) if (i.isProgressActive()) return;
             Indicator indicator = switch (modeCycleIndicator.getContainer().get()) {
-                case "SMA" -> new IndicatorSMA(getStock(), 50);
-                case "EMA" -> new IndicatorEMA(getStock(), 200);
-                case "MACD" -> new IndicatorMACD(getStock(), 12,26,false);
+                case "SMA" -> new IndicatorSMA(getStock(), Integer.parseInt(fieldMAPeriod.getContainer().get()),modeMAType.getContainer().get(),getColorFromString(modeMAColor.getContainer().get()),sliderMAWidth.getContainer().get());
+                case "EMA" -> new IndicatorEMA(getStock(), Integer.parseInt(fieldMAPeriod.getContainer().get()),modeMAType.getContainer().get(),getColorFromString(modeMAColor.getContainer().get()),sliderMAWidth.getContainer().get());
+                case "MACD" -> new IndicatorMACD(getStock(), 12,26,9,false);
                 //case "Probability" -> new IndicatorProbability(getStock(),.03f,4,5,false,true,false);
                 case "Probability" -> new IndicatorProbability(getStock(),.03f,3,5,false,true,false);
                 default -> null;
@@ -97,7 +103,14 @@ public class ChartViewScene extends Scene {
             thread.setDaemon(true);
             thread.start();
         })
+            //Add Indicator Options
+            , fieldMAPeriod
+            , modeMAType
+            , modeMAColor
+            ,sliderMAWidth
     );
+
+
 
 
     //Top Bar
@@ -115,7 +128,11 @@ public class ChartViewScene extends Scene {
         this.settingManager = new SettingManager("setting", getStock().getTicker() + "_" + getStock().getTimeFrame().getTag() + "-settings");
 
         //Set Default Setting Values
-        this.chartTime = new Setting<>(settingManager, "chartTime", new DateTime(2023, 11, 30, 10, 0));
+        if (getStock().getTimeFrame().getSeconds() >= TimeFrame.ONE_DAY.getSeconds()) {
+            this.chartTime = new Setting<>(settingManager, "chartTime", new DateTime(2023, 11, 30, 10, 0));
+        } else {
+            this.chartTime = new Setting<>(settingManager, "chartTime", new DateTime(2023, 11, 30, 11, 0));
+        }
         this.chartFocusPrice = new Setting<>(settingManager, "chartFocusPrice", getStock().getClose(chartTime.get()));
         this.candleScale = new Setting<>(settingManager, "chartCandleScale", new VectorMod(1, 200));
 
@@ -163,6 +180,8 @@ public class ChartViewScene extends Scene {
         ProgressBarUI<Double> progressBarClosePercent = new ProgressBarUI<>(Vector.NULL, new Vector(100, 20), ColorE.BLUE, getStock().getClosePercent(), 0, 1);
         progressBarClosePercent.setPos(new Vector(getSize().getX() - progressBarClosePercent.getSize().getX(), getSize().getY() - progressBarClosePercent.getSize().getY()));
         progressBarClosePercent.draw();
+
+        updateIndicatorOptions();
 
         super.draw();
 
@@ -360,6 +379,72 @@ public class ChartViewScene extends Scene {
             candleScale.set(candleScale.get().getAdded(speed, 0));
             if (candleScale.get().getX() < xMin) candleScale.set(new Vector(xMin, candleScale.get().getY()));
             if (candleScale.get().getX() > xMax) candleScale.set(new Vector(xMax, candleScale.get().getY()));
+        }
+    }
+
+    private void updateIndicatorOptions() {
+        fieldMAPeriod.setEnabled(false);
+        modeMAType.setEnabled(false);
+        modeMAColor.setEnabled(false);
+        sliderMAWidth.setEnabled(false);
+
+        switch (modeCycleIndicator.getContainer().get()) {
+            case "SMA", "EMA" -> {
+                int inc = 50;
+                fieldMAPeriod.setPos(new Vector(20, yVal + inc));
+                inc += 50;
+                modeMAType.setPos(new Vector(20, yVal + inc));
+                inc += 50;
+                modeMAColor.setPos(new Vector(20,yVal + inc));
+                inc += 50;
+                sliderMAWidth.setPos(new Vector(20,yVal + inc));
+
+
+                fieldMAPeriod.setEnabled(true);
+                modeMAType.setEnabled(true);
+                modeMAColor.setEnabled(true);
+                sliderMAWidth.setEnabled(true);
+            }
+            case "MACD" -> {
+            }
+            case "Probability" -> {
+            }
+            default -> {
+                fieldMAPeriod.setEnabled(false);
+                modeMAType.setEnabled(false);
+            }
+        }
+    }
+
+    private ColorE getColorFromString(String string) {
+        switch (modeMAColor.getContainer().get()) {
+            case "Red" -> {
+                return ColorE.RED;
+            }
+            case "Orange" -> {
+                return ColorE.ORANGE;
+            }
+            case "Yellow" -> {
+                return ColorE.YELLOW;
+            }
+            case "Green" -> {
+                return ColorE.GREEN;
+            }
+            case "Blue" -> {
+                return ColorE.BLUE;
+            }
+            case "Purple" -> {
+                return ColorE.PURPLE;
+            }
+            case "White" -> {
+                return ColorE.WHITE;
+            }
+            case "Black" -> {
+                return ColorE.BLACK;
+            }
+            default -> {
+                return ColorE.WHITE;
+            }
         }
     }
 

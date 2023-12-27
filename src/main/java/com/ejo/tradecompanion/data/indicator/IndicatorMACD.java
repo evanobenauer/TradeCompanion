@@ -8,6 +8,7 @@ import com.ejo.tradecompanion.data.Stock;
 import com.ejo.tradecompanion.util.StockUtil;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class IndicatorMACD extends Indicator {
 
@@ -19,21 +20,21 @@ public class IndicatorMACD extends Indicator {
     private final HistoricalDataContainer MACD;
     private final IndicatorMA signal;
 
-    public IndicatorMACD(Stock stock, int lowPeriod, int highPeriod, boolean sma) {
+    public IndicatorMACD(Stock stock, int lowPeriod, int highPeriod, int signalPeriod, boolean sma) {
         super(stock, false);
         this.sma = sma;
         if (sma) {
-            this.ma1 = new IndicatorSMA(stock, lowPeriod);
-            this.ma2 = new IndicatorSMA(stock, highPeriod);
-            this.signal = new IndicatorSMA(stock,9);
+            this.ma1 = new IndicatorSMA(stock, lowPeriod,null,null,0);
+            this.ma2 = new IndicatorSMA(stock, highPeriod,null,null,0);
+            this.signal = new IndicatorSMA(stock,signalPeriod,null,null,0);
         } else {
-            this.ma1 = new IndicatorEMA(stock, lowPeriod);
-            this.ma2 = new IndicatorEMA(stock, highPeriod);
-            this.signal = new IndicatorEMA(stock,9);
+            this.ma1 = new IndicatorEMA(stock, lowPeriod,null,null,0);
+            this.ma2 = new IndicatorEMA(stock, highPeriod,null,null,0);
+            this.signal = new IndicatorEMA(stock,signalPeriod,null,null,0);
         }
 
 
-        this.MACD = new IndicatorMA(stock,false,0,ColorE.NULL) {
+        this.MACD = new IndicatorMA(stock,false,0, IndicatorMA.Type.CLOSE,null,0) {
             @Override
             public String getDefaultFileName() {
                 return null;
@@ -43,12 +44,11 @@ public class IndicatorMACD extends Indicator {
 
     @Override
     public float[] calculateData(DateTime dateTime) {
-        //TODO: This always starts at the sma as data is not loaded. Make a method to start at the previous ma. Maybe load the real ma file?
         float valueOpenMACD = 0; //DNE
         float valueCloseMACD = getMA1().calculateData(dateTime)[1] - getMA2().calculateData(dateTime)[1];
         this.MACD.getHistoricalData().put(dateTime.getDateTimeID(),new float[]{valueOpenMACD,valueCloseMACD});
 
-        float valueSignal = sma ? calculateSMA(dateTime,this.MACD,9)[1] : calculateEMA(dateTime,this.MACD,this,9)[1];
+        float valueSignal = sma ? calculateSMA(dateTime,this.MACD,this.signal.getPeriod())[1] : calculateEMA(dateTime,this.MACD,this.signal.getPeriod())[1];
 
         float[] result = new float[]{valueCloseMACD,valueSignal};
         getHistoricalData().put(dateTime.getDateTimeID(), result);
@@ -64,7 +64,7 @@ public class IndicatorMACD extends Indicator {
 
     @Override
     public String getDefaultFileName() {
-        return "MACD" + getMA1().getPeriod() + "-" + getMA2().getPeriod() + (getStock().isExtendedHours() ? "-EH" : "");
+        return "MACD" + getMA1().getPeriod() + "-" + getMA2().getPeriod() + "-" + getStockLabel() + (getStock().isExtendedHours() ? "-EH" : "");
     }
 
     @Override
@@ -80,7 +80,7 @@ public class IndicatorMACD extends Indicator {
         return ma2;
     }
 
-    private float[] calculateEMA(DateTime dateTime, HistoricalDataContainer data, HistoricalDataContainer ma, int period) {
+    private float[] calculateEMA(DateTime dateTime, HistoricalDataContainer data, int period) {
         float macdClose = data.getData(dateTime)[1];
 
         double weight = (double) 2 / (period + 1);
@@ -92,7 +92,7 @@ public class IndicatorMACD extends Indicator {
             lastCandleTime = dateTime.getAdded( - getStock().getTimeFrame().getSeconds() * i);
         }
 
-        float prevEMA = ma.getData(lastCandleTime)[1];
+        float prevEMA = getData(lastCandleTime)[1];
         if (prevEMA == -1 || Double.isNaN(prevEMA)) { //If the previous EMA does not exist, set this value to the current SMA
             prevEMA = calculateSMA(dateTime,data,period)[1];
         }
@@ -144,4 +144,39 @@ public class IndicatorMACD extends Indicator {
         return avg;
     }
 
+    @Override
+    public HashMap<Long, float[]> loadHistoricalData(String filePath, String fileName) {
+        this.progressActive = true;
+        this.getProgressContainer().set(0d);
+        getMA1().loadHistoricalData();
+        getMA2().loadHistoricalData();
+        return super.loadHistoricalData(filePath, fileName);
+    }
+
+    @Override
+    public boolean saveHistoricalData(String filePath, String fileName) {
+        this.progressActive = true;
+        this.getProgressContainer().set(0d);
+        getMA1().saveHistoricalData();
+        getMA2().saveHistoricalData();
+        return super.saveHistoricalData(filePath, fileName);
+    }
+
+    @Override
+    public void applyLoadHistoricalData(String filePath, String fileName) {
+        this.progressActive = true;
+        this.getProgressContainer().set(0d);
+        getMA1().applyLoadHistoricalData();
+        getMA2().applyLoadHistoricalData();
+        super.applyLoadHistoricalData(filePath, fileName);
+    }
+
+    @Override
+    public boolean applySaveHistoricalData(String filePath, String fileName) {
+        this.progressActive = true;
+        this.getProgressContainer().set(0d);
+        getMA1().applySaveHistoricalData();
+        getMA2().applySaveHistoricalData();
+        return super.applySaveHistoricalData(filePath, fileName);
+    }
 }

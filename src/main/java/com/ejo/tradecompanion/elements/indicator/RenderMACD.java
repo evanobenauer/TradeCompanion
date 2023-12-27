@@ -56,8 +56,8 @@ public class RenderMACD extends ElementUI {
         }
 
 
-        drawMA(macd,0,candleList,focusY,focusPrice,maWidth,maScale);
-        drawMA(macd,1,candleList,focusY,focusPrice,maWidth,maScale);
+        drawMA(macd,0,candleList,focusY,focusPrice,maWidth,maScale); //MACD Line
+        //drawMA(macd,1,candleList,focusY,focusPrice,maWidth,maScale); //Signal Line (Currently Disabled. The histogram shows all indicated data for this)
     }
 
     @Override

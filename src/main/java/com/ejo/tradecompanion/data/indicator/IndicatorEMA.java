@@ -12,9 +12,9 @@ public class IndicatorEMA extends IndicatorMA {
 
     private DateTime currentCalculationDate;
 
-    public IndicatorEMA(Stock stock, int period) {
-        super(stock,false,period, ColorE.YELLOW);
-        this.equivalentSMA = new IndicatorSMA(getStock(), period);
+    public IndicatorEMA(Stock stock, int period, Type type, ColorE color, int lineWidth) {
+        super(stock,false,period, type,color,lineWidth);
+        this.equivalentSMA = new IndicatorSMA(getStock(), period,null,null,0);
     }
 
     @Override

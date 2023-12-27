@@ -48,8 +48,10 @@ public class RenderUtil {
 
             //Add MA points
             for (Map.Entry<IndicatorMA, ArrayList<Vector>> entry : maMap.entrySet()) {
-                    double maY = candle.getFocusY() - (entry.getKey().getCloseValue(candle.getOpenTime()) * candle.getScale().getY()) + candle.getFocusPrice() * candle.getScale().getY();
-                    if (entry.getKey().getCloseValue(candle.getOpenTime()) != -1)
+                float[] data = entry.getKey().getData(candle.getOpenTime());
+                int i = entry.getKey().getType().getIndex();
+                    double maY = candle.getFocusY() - (data[i] * candle.getScale().getY()) + candle.getFocusPrice() * candle.getScale().getY();
+                    if (data[i] != -1)
                         entry.getValue().add(new Vector(candle.getPos().getX() + (candle.getBodySize().getX() / 2), maY));//This is a little buggy with precise positioning of points for some reason
                 }
 
@@ -61,10 +63,9 @@ public class RenderUtil {
 
         }
 
-        //Draw Probability Indicator
-        if (probability != null) drawProbabilityIndicator(scene, probability, probabilityCandles);
-
         if (macd != null) new RenderMACD(macd,listCandle).draw(scene);
+
+        if (probability != null) drawProbabilityIndicator(scene, probability, probabilityCandles);
 
         //Draw MA Lines
         drawMAs(maMap);
@@ -113,7 +114,7 @@ public class RenderUtil {
     private static void drawMAs(HashMap<IndicatorMA, ArrayList<Vector>> maMap) {
         for (Map.Entry<IndicatorMA, ArrayList<Vector>> entry : maMap.entrySet()) {
             try {
-                new LineUI(entry.getKey().getColor(), LineUI.Type.PLAIN, 4d, entry.getValue().toArray(new Vector[0])).draw();
+                new LineUI(entry.getKey().getColor(), LineUI.Type.PLAIN, entry.getKey().getLineWidth(), entry.getValue().toArray(new Vector[0])).draw();
             } catch (Exception ignored) {
             }
         }
