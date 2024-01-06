@@ -91,7 +91,6 @@ public class ChartViewScene extends Scene {
                 case "SMA" -> new IndicatorSMA(getStock(), Integer.parseInt(fieldMAPeriod.getContainer().get()),modeMAType.getContainer().get(),getColorFromString(modeMAColor.getContainer().get()),sliderMAWidth.getContainer().get());
                 case "EMA" -> new IndicatorEMA(getStock(), Integer.parseInt(fieldMAPeriod.getContainer().get()),modeMAType.getContainer().get(),getColorFromString(modeMAColor.getContainer().get()),sliderMAWidth.getContainer().get());
                 case "MACD" -> new IndicatorMACD(getStock(), 12,26,9,false);
-                //case "Probability" -> new IndicatorProbability(getStock(),.03f,4,5,false,true,false);
                 case "Probability" -> new IndicatorProbability(getStock(),.03f,3,5,false,true,false);
                 default -> null;
             };
@@ -108,14 +107,13 @@ public class ChartViewScene extends Scene {
             , fieldMAPeriod
             , modeMAType
             , modeMAColor
-            ,sliderMAWidth
+            , sliderMAWidth
     );
 
 
 
 
-    //Top Bar
-    //TODO: Add Color Font Selection, Jump-To-Date, Drag Speed?, Tooltips?
+    //Top Bar    //TODO: Add Color Font Selection, Jump-To-Date, Drag Speed?, Tooltips?
     private final ButtonUI indicatorButton = new ButtonUI("Indicators", new Vector(20, 25), new Vector(120, 30), ChartUtil.WIDGET_COLOR, ButtonUI.MouseButton.LEFT, () -> indicatorBar.setOpen(!indicatorBar.isOpen()));
 
     private final SideBarUI topBar = new SideBarUI(SideBarUI.Type.TOP, 80, true, new ColorE(0, 100, 100),
@@ -297,6 +295,8 @@ public class ChartViewScene extends Scene {
         boolean canDrag = !(topBar.isMouseOver() || indicatorBar.isMouseOver());
         if (action == Mouse.ACTION_CLICK) {
             if (!canDrag) return;
+            this.candleScalePre = candleScale.get();
+            this.dragPosPre = mousePos;
             this.dragTimeGrab = null;
             for (CandleUI candle : candleList) {
                 if (ChartUtil.isHoveredHorizontally(candle, candleSeparation, mousePos)) {
@@ -304,8 +304,7 @@ public class ChartViewScene extends Scene {
                     break;
                 }
             }
-            this.candleScalePre = candleScale.get();
-            this.dragPosPre = mousePos;
+
             this.dragging = true;
         }
 
@@ -411,15 +410,11 @@ public class ChartViewScene extends Scene {
             }
             case "Probability" -> {
             }
-            default -> {
-                fieldMAPeriod.setEnabled(false);
-                modeMAType.setEnabled(false);
-            }
         }
     }
 
     private ColorE getColorFromString(String string) {
-        switch (modeMAColor.getContainer().get()) {
+        switch (string) {
             case "Red" -> {
                 return ColorE.RED;
             }
@@ -445,7 +440,7 @@ public class ChartViewScene extends Scene {
                 return ColorE.BLACK;
             }
             default -> {
-                return ColorE.WHITE;
+                return ColorE.NULL;
             }
         }
     }

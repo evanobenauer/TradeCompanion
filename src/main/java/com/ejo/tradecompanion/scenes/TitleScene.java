@@ -21,6 +21,8 @@ import java.awt.*;
 
 public class TitleScene extends Scene {
 
+    //TODO: Add TextField to input the timeframe to which you'd like to load data. Copy the modecycle and textfields from stockdownloader
+
     private static final ColorE WIDGET_COLOR = new ColorE(0, 110, 110);
 
     private Stock stock;
