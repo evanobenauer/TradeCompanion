@@ -4,6 +4,7 @@ import com.ejo.glowlib.misc.DoOnce;
 import com.ejo.glowlib.setting.Container;
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowlib.time.StopWatch;
+import com.ejo.glowlib.util.TimeUtil;
 import com.ejo.tradecompanion.util.StockUtil;
 import com.ejo.tradecompanion.util.TimeFrame;
 import com.ejo.tradecompanion.web.StockScraper;
@@ -74,7 +75,7 @@ public class Stock extends HistoricalDataContainer {
      */
     public void updateLiveData(double liveDelayS, boolean includePriceUpdate) {
         //Updates the progress bar of each segmentation
-        if (StockUtil.isPriceActive(isExtendedHours(), StockUtil.getAdjustedCurrentTime())) updateClosePercent();
+        if (StockUtil.isPriceActive(isExtendedHours(), TimeUtil.getAdjustedCurrentTime())) updateClosePercent();
 
         //Check if the stock should update. If not, don't run the method
         if (!shouldUpdate()) return;
@@ -137,7 +138,7 @@ public class Stock extends HistoricalDataContainer {
      */
     private void updateOpen() {
         this.doOpen.run(() -> {
-            this.openTime = StockUtil.getAdjustedCurrentTime();
+            this.openTime = TimeUtil.getAdjustedCurrentTime();
             setAllData(getPrice());
         });
     }
@@ -152,7 +153,7 @@ public class Stock extends HistoricalDataContainer {
             return;
         }
         this.doClose.run(() -> {
-            DateTime ct = StockUtil.getAdjustedCurrentTime();
+            DateTime ct = TimeUtil.getAdjustedCurrentTime();
             //Save Live Data as Historical [Data is stored as (DATETIME,OPEN,CLOSE,MIN,MAX)]
             float[] timeFrameData = {getOpen(), getPrice(), getMin(), getMax()};
             DateTime openTime = new DateTime(ct.getYear(), ct.getMonth(), ct.getDay(), ct.getHour(), ct.getMinute(), ct.getSecond() - getTimeFrame().getSeconds());
@@ -178,7 +179,7 @@ public class Stock extends HistoricalDataContainer {
      * Updates the percentage complete for the current stock candle
      */
     private void updateClosePercent() {
-        DateTime ct = StockUtil.getAdjustedCurrentTime();
+        DateTime ct = TimeUtil.getAdjustedCurrentTime();
         double totalPercent = 0;
 
         //Second Percent
@@ -209,7 +210,7 @@ public class Stock extends HistoricalDataContainer {
         if (!this.shouldStartUpdates) return false;
 
         //Only allows for data collection during trading hours
-        return StockUtil.isPriceActive(isExtendedHours(), StockUtil.getAdjustedCurrentTime());
+        return StockUtil.isPriceActive(isExtendedHours(), TimeUtil.getAdjustedCurrentTime());
 
         //Finally, if all checks pass,
         //return true;
@@ -221,7 +222,7 @@ public class Stock extends HistoricalDataContainer {
      * @return
      */
     public boolean shouldClose() {
-        DateTime ct = StockUtil.getAdjustedCurrentTime();
+        DateTime ct = TimeUtil.getAdjustedCurrentTime();
         return switch (getTimeFrame()) {
             case ONE_SECOND -> true;
             case FIVE_SECONDS -> ct.getSecond() % 5 == 0;

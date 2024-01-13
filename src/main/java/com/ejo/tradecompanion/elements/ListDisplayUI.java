@@ -5,7 +5,7 @@ import com.ejo.glowlib.misc.ColorE;
 import com.ejo.glowui.scene.Scene;
 import com.ejo.glowui.scene.elements.ElementUI;
 import com.ejo.glowui.scene.elements.TextUI;
-import com.ejo.glowui.util.Mouse;
+import com.ejo.glowui.util.input.Mouse;
 import com.ejo.glowui.util.render.Fonts;
 
 import java.awt.*;

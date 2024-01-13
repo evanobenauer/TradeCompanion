@@ -8,6 +8,8 @@ import com.ejo.glowlib.setting.Container;
 import com.ejo.glowlib.setting.Setting;
 import com.ejo.glowlib.setting.SettingManager;
 import com.ejo.glowlib.time.DateTime;
+import com.ejo.glowlib.util.ColorUtil;
+import com.ejo.glowlib.util.TimeUtil;
 import com.ejo.glowui.scene.Scene;
 import com.ejo.glowui.scene.elements.ProgressBarUI;
 import com.ejo.glowui.scene.elements.SideBarUI;
@@ -18,8 +20,8 @@ import com.ejo.glowui.scene.elements.widget.ButtonUI;
 import com.ejo.glowui.scene.elements.widget.ModeCycleUI;
 import com.ejo.glowui.scene.elements.widget.SliderUI;
 import com.ejo.glowui.scene.elements.widget.TextFieldUI;
-import com.ejo.glowui.util.Key;
-import com.ejo.glowui.util.Mouse;
+import com.ejo.glowui.util.input.Key;
+import com.ejo.glowui.util.input.Mouse;
 import com.ejo.glowui.util.render.Fonts;
 import com.ejo.glowui.util.render.QuickDraw;
 import com.ejo.stockdownloader.data.api.AlphaVantageDownloader;
@@ -74,11 +76,11 @@ public class ChartViewScene extends Scene {
     private final ButtonUI buttonAddIndicator;
 
     //MA
-    private final Vector optionSize = new Vector(100,30);
-    private final TextFieldUI fieldMAPeriod = new TextFieldUI(Vector.NULL,optionSize,ColorE.WHITE,new Container<>(""),"Period",true);
-    private final ModeCycleUI<IndicatorMA.Type> modeMAType = new ModeCycleUI<>(Vector.NULL,optionSize,ChartUtil.WIDGET_COLOR,new Container<>(IndicatorMA.Type.CLOSE), IndicatorMA.Type.values());
-    private final ModeCycleUI<String> modeMAColor = new ModeCycleUI<>(Vector.NULL,optionSize,ChartUtil.WIDGET_COLOR,new Container<>("Yellow"),"Red","Orange","Yellow","Green","Blue","Purple","White","Black");
-    private final SliderUI<Integer> sliderMAWidth = new SliderUI<>("Width",Vector.NULL,optionSize,ChartUtil.WIDGET_COLOR,new Container<>(1),1,10,1, SliderUI.Type.INTEGER,true);
+    private final Vector optionSize = new Vector(100, 30);
+    private final TextFieldUI fieldMAPeriod = new TextFieldUI(Vector.NULL, optionSize, ColorE.WHITE, new Container<>(""), "Period", true);
+    private final ModeCycleUI<IndicatorMA.Type> modeMAType = new ModeCycleUI<>(Vector.NULL, optionSize, ChartUtil.WIDGET_COLOR, new Container<>(IndicatorMA.Type.CLOSE), IndicatorMA.Type.values());
+    private final ModeCycleUI<String> modeMAColor = new ModeCycleUI<>(Vector.NULL, optionSize, ChartUtil.WIDGET_COLOR, new Container<>("Yellow"), "Red", "Orange", "Yellow", "Green", "Blue", "Purple", "White", "Black");
+    private final SliderUI<Integer> sliderMAWidth = new SliderUI<>("Width", Vector.NULL, optionSize, ChartUtil.WIDGET_COLOR, new Container<>(1), 1, 10, 1, SliderUI.Type.INTEGER, true);
 
     private final SideBarUI indicatorBar = new SideBarUI(SideBarUI.Type.LEFT, 160, true, ChartUtil.WIDGET_COLOR.alpha(120),
             new TextUI("Add Indicator", Fonts.getDefaultFont(20), new Vector(22, yVal), ColorE.WHITE)
@@ -86,31 +88,29 @@ public class ChartViewScene extends Scene {
             , listDisplayIndicator = new ListDisplayUI<>(new Vector(80, 0), listIndicator).setFontSize(30)
 
             , buttonAddIndicator = new ButtonUI("Add", new Vector(20, yVal += 50), new Vector(120, 30), ChartUtil.WIDGET_COLOR, ButtonUI.MouseButton.LEFT, () -> {
-            for (Indicator i : listDisplayIndicator.getList()) if (i.isProgressActive()) return;
-            Indicator indicator = switch (modeCycleIndicator.getContainer().get()) {
-                case "SMA" -> new IndicatorSMA(getStock(), Integer.parseInt(fieldMAPeriod.getContainer().get()),modeMAType.getContainer().get(),getColorFromString(modeMAColor.getContainer().get()),sliderMAWidth.getContainer().get());
-                case "EMA" -> new IndicatorEMA(getStock(), Integer.parseInt(fieldMAPeriod.getContainer().get()),modeMAType.getContainer().get(),getColorFromString(modeMAColor.getContainer().get()),sliderMAWidth.getContainer().get());
-                case "MACD" -> new IndicatorMACD(getStock(), 12,26,9,false);
-                case "Probability" -> new IndicatorProbability(getStock(),.03f,3,5,false,true,false);
-                default -> null;
-            };
-            assert indicator != null;
-            for (Indicator i : listDisplayIndicator.getList()) {
-                if (i.toString().equals(indicator.toString())) return;
-            }
-            listIndicator.add(indicator);
-            Thread thread = new Thread(indicator::loadHistoricalData);
-            thread.setDaemon(true);
-            thread.start();
-        })
+        for (Indicator i : listDisplayIndicator.getList()) if (i.isProgressActive()) return;
+        Indicator indicator = switch (modeCycleIndicator.getContainer().get()) {
+            case "SMA" -> new IndicatorSMA(getStock(), Integer.parseInt(fieldMAPeriod.getContainer().get()), modeMAType.getContainer().get(), ColorUtil.getColorFromString(modeMAColor.getContainer().get()), sliderMAWidth.getContainer().get());
+            case "EMA" -> new IndicatorEMA(getStock(), Integer.parseInt(fieldMAPeriod.getContainer().get()), modeMAType.getContainer().get(), ColorUtil.getColorFromString(modeMAColor.getContainer().get()), sliderMAWidth.getContainer().get());
+            case "MACD" -> new IndicatorMACD(getStock(), 12, 26, 9, false);
+            case "Probability" -> new IndicatorProbability(getStock(), .03f, 3, 5, false, true, false);
+            default -> null;
+        };
+        assert indicator != null;
+        for (Indicator i : listDisplayIndicator.getList()) {
+            if (i.toString().equals(indicator.toString())) return;
+        }
+        listIndicator.add(indicator);
+        Thread thread = new Thread(indicator::loadHistoricalData);
+        thread.setDaemon(true);
+        thread.start();
+    })
             //Add Indicator Options
             , fieldMAPeriod
             , modeMAType
             , modeMAColor
             , sliderMAWidth
     );
-
-
 
 
     //Top Bar    //TODO: Add Color Font Selection, Jump-To-Date, Drag Speed?, Tooltips?
@@ -141,7 +141,7 @@ public class ChartViewScene extends Scene {
         //Set Time for Non-Extended Hours
         int loopCount = 0;
         DateTime adjustedTime = chartTime.get();
-        while (!StockUtil.isPriceActive(getStock().isExtendedHours(),chartTime.get().getAdded(-loopCount * stock.getTimeFrame().getSeconds()))) { //This is mildly inefficient. Maybe rewrite it someday ¯\_(ツ)_/¯
+        while (!StockUtil.isPriceActive(getStock().isExtendedHours(), chartTime.get().getAdded(-loopCount * stock.getTimeFrame().getSeconds()))) { //This is mildly inefficient. Maybe rewrite it someday ¯\_(ツ)_/¯
             adjustedTime = chartTime.get().getAdded(-loopCount * stock.getTimeFrame().getSeconds());
             loopCount++;
         }
@@ -173,7 +173,7 @@ public class ChartViewScene extends Scene {
         new GradientRectangleUI(Vector.NULL, getSize(), new ColorE(0, 255, 255).alpha(20), new ColorE(0, 0, 0), GradientRectangleUI.Type.VERTICAL).draw();
 
         //Draw Candles & Indicators
-        RenderUtil.drawAllData(this,candleList, listIndicator.toArray(new Indicator[0]));
+        RenderUtil.drawAllData(this, candleList, listIndicator.toArray(new Indicator[0]));
 
         //Draw Close Percent Progress Bar
         ProgressBarUI<Double> progressBarClosePercent = new ProgressBarUI<>(Vector.NULL, new Vector(100, 20), ColorE.BLUE, getStock().getClosePercent(), 0, 1);
@@ -271,8 +271,7 @@ public class ChartViewScene extends Scene {
         //Draw Vertical Candle Line
         for (CandleUI candle : candleList) {
             if (ChartUtil.isHoveredHorizontally(candle, candleSeparation, getWindow().getScaledMousePos())) {
-                //LineUI line = new LineUI(new Vector(candle.getPos().getX() + candle.getWidth() / 2, 0), new Vector(candle.getPos().getX() + candle.getWidth() / 2, getSize().getY()), ColorE.WHITE, LineUI.Type.DOTTED, 1);
-                double x = candle.getPos().getX() + candle.getWidth() * candle.getScale().getX()/ 2;
+                double x = candle.getPos().getX() + candle.getWidth() * candle.getScale().getX() / 2;
                 LineUI line = new LineUI(new Vector(x, 0), new Vector(x, getSize().getY()), ColorE.WHITE, LineUI.Type.DOTTED, 1);
                 line.draw();
                 QuickDraw.drawTextCentered(String.valueOf(candle.getOpenTime()), Fonts.getDefaultFont(24), Vector.NULL.getAdded(candle.getPos().getX() + candle.getWidth() / 2, getSize().getY() - 12), Vector.NULL, ColorE.WHITE);
@@ -396,9 +395,9 @@ public class ChartViewScene extends Scene {
                 inc += 50;
                 modeMAType.setPos(new Vector(startX, yVal + inc));
                 inc += 50;
-                modeMAColor.setPos(new Vector(startX,yVal + inc));
+                modeMAColor.setPos(new Vector(startX, yVal + inc));
                 inc += 50;
-                sliderMAWidth.setPos(new Vector(startX,yVal + inc));
+                sliderMAWidth.setPos(new Vector(startX, yVal + inc));
 
 
                 fieldMAPeriod.setEnabled(true);
@@ -409,38 +408,6 @@ public class ChartViewScene extends Scene {
             case "MACD" -> {
             }
             case "Probability" -> {
-            }
-        }
-    }
-
-    private ColorE getColorFromString(String string) {
-        switch (string) {
-            case "Red" -> {
-                return ColorE.RED;
-            }
-            case "Orange" -> {
-                return ColorE.ORANGE;
-            }
-            case "Yellow" -> {
-                return ColorE.YELLOW;
-            }
-            case "Green" -> {
-                return ColorE.GREEN;
-            }
-            case "Blue" -> {
-                return ColorE.BLUE;
-            }
-            case "Purple" -> {
-                return ColorE.PURPLE;
-            }
-            case "White" -> {
-                return ColorE.WHITE;
-            }
-            case "Black" -> {
-                return ColorE.BLACK;
-            }
-            default -> {
-                return ColorE.NULL;
             }
         }
     }
@@ -487,11 +454,12 @@ public class ChartViewScene extends Scene {
         if (key == Key.KEY_U.getId()) {
             System.out.println("Updating Data");
             AlphaVantageDownloader downloader = new AlphaVantageDownloader("H0JHAOU61I4MESDZ", false, getStock().getTicker(), DownloadTimeFrame.getFromTag(getStock().getTimeFrame().getTag()), true);
-            downloader.download(StockUtil.getAdjustedCurrentTime().getYear(), StockUtil.getAdjustedCurrentTime().getMonth());
+            downloader.download(TimeUtil.getAdjustedCurrentTime().getYear(), TimeUtil.getAdjustedCurrentTime().getMonth());
             downloader.combineToLiveFile();
             getStock().applyLoadHistoricalData();
             DateTime startCandle = getStock().getOpenTime();
-            for (Indicator indicator : listIndicator) indicator.calculateData(startCandle.getAdded(-30 * 24 * 60 * 60), startCandle);
+            for (Indicator indicator : listIndicator)
+                indicator.calculateData(startCandle.getAdded(-30 * 24 * 60 * 60), startCandle);
         }
 
         if (key == Key.KEY_C.getId()) {
@@ -508,8 +476,8 @@ public class ChartViewScene extends Scene {
 
     @Deprecated
     private void tempCalculateData() {
-        DateTime endCandle = StockUtil.getAdjustedCurrentTime();
-        DateTime startCandle = StockUtil.getAdjustedCurrentTime();
+        DateTime endCandle = TimeUtil.getAdjustedCurrentTime();
+        DateTime startCandle = TimeUtil.getAdjustedCurrentTime();
 
         for (CandleUI candle : candleList) {
             if (ChartUtil.isHoveredHorizontally(candle, candleSeparation, getWindow().getScaledMousePos())) {

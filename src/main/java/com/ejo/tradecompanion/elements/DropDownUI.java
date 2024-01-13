@@ -8,6 +8,8 @@ import java.util.ArrayList;
 
 public class DropDownUI<T> extends ElementUI {
 
+    //TODO: Create a dropdown menu
+
     private ArrayList<T> list;
 
     public DropDownUI(Vector pos, ArrayList<T> list) {

@@ -9,9 +9,9 @@ import com.ejo.glowlib.time.StopWatch;
 import com.ejo.glowui.scene.Scene;
 import com.ejo.glowui.scene.elements.ProgressBarUI;
 import com.ejo.glowui.scene.elements.TextUI;
-import com.ejo.glowui.util.Key;
-import com.ejo.glowui.util.Mouse;
-import com.ejo.glowui.util.Util;
+import com.ejo.glowui.util.UIUtil;
+import com.ejo.glowui.util.input.Key;
+import com.ejo.glowui.util.input.Mouse;
 import com.ejo.glowui.util.render.Fonts;
 import com.ejo.glowui.util.render.QuickDraw;
 import com.ejo.tradecompanion.data.Stock;
@@ -149,7 +149,7 @@ public class ProbabilityScene extends Scene {
         super.tick();
         stock.updateLiveData();
         if (watch.hasTimePassedS(.5f)) {
-            Util.forceRenderFrame();
+            UIUtil.forceEconRenderFrame();
             watch.restart();
         }
     }

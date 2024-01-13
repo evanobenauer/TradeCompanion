@@ -2,10 +2,10 @@ package com.ejo.tradecompanion.data.indicator;
 
 import com.ejo.glowlib.time.DateTime;
 import com.ejo.glowlib.time.StopWatch;
+import com.ejo.glowlib.util.TimeUtil;
 import com.ejo.tradecompanion.data.HistoricalDataContainer;
 import com.ejo.tradecompanion.data.Stock;
 import com.ejo.tradecompanion.util.StockUtil;
-import com.ejo.tradecompanion.util.TimeUtil;
 
 public abstract class Indicator extends HistoricalDataContainer {
 
@@ -88,7 +88,7 @@ public abstract class Indicator extends HistoricalDataContainer {
      * Calculates indicator data from all available stock data dates. The data will be reflective of whether the stock is using extended hours or not
      */
     public void calculateData() {
-        calculateData(new DateTime(2000, 1, 3), StockUtil.getAdjustedCurrentTime());
+        calculateData(new DateTime(2000, 1, 3), TimeUtil.getAdjustedCurrentTime());
     }
 
 
