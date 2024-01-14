@@ -223,19 +223,7 @@ public class Stock extends HistoricalDataContainer {
      */
     public boolean shouldClose() {
         DateTime ct = TimeUtil.getAdjustedCurrentTime();
-        return switch (getTimeFrame()) {
-            case ONE_SECOND -> true;
-            case FIVE_SECONDS -> ct.getSecond() % 5 == 0;
-            case THIRTY_SECONDS -> ct.getSecond() % 30 == 0;
-            case ONE_MINUTE -> ct.getSecond() == 0;
-            case FIVE_MINUTES -> ct.getMinute() % 5 == 0 && ct.getSecond() == 0;
-            case FIFTEEN_MINUTES -> ct.getMinute() % 15 == 0 && ct.getSecond() == 0;
-            case THIRTY_MINUTES -> ct.getMinute() % 30 == 0 && ct.getSecond() == 0;
-            case ONE_HOUR -> ct.getHour() == 0 && ct.getMinute() == 0 && ct.getSecond() == 0;
-            case TWO_HOUR -> ct.getHour() % 2 == 0 && ct.getMinute() == 0 && ct.getSecond() == 0;
-            case FOUR_HOUR -> ct.getHour() % 4 == 0 && ct.getMinute() == 0 && ct.getSecond() == 0;
-            case ONE_DAY -> ct.getHour() % 8 == 0 && ct.getMinute() == 0 && ct.getSecond() == 0;
-        };
+        return StockUtil.shouldClose(ct,getTimeFrame());
     }
 
     /**

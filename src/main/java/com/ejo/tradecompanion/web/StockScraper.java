@@ -17,8 +17,6 @@ import java.util.HashMap;
 *    https://www.marketwatch.com/investing/fund/spy/charts?mod=mw_quote_advanced
 *    https://www.investing.com/etfs/spdr-s-p-500
 *    https://medium.com/@rushic24/how-i-webscraped-1-minute-stock-data-from-tradingview-5bc9b4a823a9
-*
-*
  */
 
 public class StockScraper {

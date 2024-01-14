@@ -24,6 +24,7 @@ import com.ejo.glowui.util.input.Key;
 import com.ejo.glowui.util.input.Mouse;
 import com.ejo.glowui.util.render.Fonts;
 import com.ejo.glowui.util.render.QuickDraw;
+import com.ejo.stockdownloader.App;
 import com.ejo.stockdownloader.data.api.AlphaVantageDownloader;
 import com.ejo.stockdownloader.util.DownloadTimeFrame;
 import com.ejo.tradecompanion.data.Stock;
@@ -36,6 +37,8 @@ import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 
 public class ChartViewScene extends Scene {
+
+    //TODO: Clean this class code. Make more organized and modular with methods
 
     //Define Stock (If the stock needs to be changed, switch to a new scene)
     private final Stock stock;
@@ -113,24 +116,28 @@ public class ChartViewScene extends Scene {
     );
 
 
-    //Top Bar    //TODO: Add Color Font Selection, Jump-To-Date, Drag Speed?, Tooltips?
+    //Top Bar TODO: Add Color Font Selection, Jump-To-Date, Drag Speed?, Tooltips?
     private final ButtonUI indicatorButton = new ButtonUI("Indicators", new Vector(20, 25), new Vector(120, 30), ChartUtil.WIDGET_COLOR, ButtonUI.MouseButton.LEFT, () -> indicatorBar.setOpen(!indicatorBar.isOpen()));
 
     private final SideBarUI topBar = new SideBarUI(SideBarUI.Type.TOP, 80, true, new ColorE(0, 100, 100),
             indicatorButton
+            //TODO: Add "Calculations" Sidebar menu with date ranges to calculate indicator data
     );
 
 
     public ChartViewScene(Stock stock) {
         super("Chart Viewer");
         this.stock = stock;
-        this.settingManager = new SettingManager("setting", getStock().getTicker() + "_" + getStock().getTimeFrame().getTag() + "-settings");
+        this.settingManager = new SettingManager("setting", getStock().getTicker() + "-settings");
 
         //Set Default Setting Values
-        if (getStock().getTimeFrame().getSeconds() >= TimeFrame.ONE_DAY.getSeconds()) {
-            this.chartTime = new Setting<>(settingManager, "chartTime", new DateTime(2023, 11, 30, 10, 0));
+        DateTime ct = TimeUtil.getAdjustedCurrentTime();
+        if (getStock().getTimeFrame().getSeconds() < TimeFrame.ONE_HOUR.getSeconds()) {
+            this.chartTime = new Setting<>(settingManager, "chartTime", new DateTime(ct.getYear(), ct.getMonth(), 30, 9, 30));
+        } else if (getStock().getTimeFrame().getSeconds() < TimeFrame.ONE_DAY.getSeconds()) {
+            this.chartTime = new Setting<>(settingManager, "chartTime", new DateTime(ct.getYear(), ct.getMonth(), 30, 10, 0));
         } else {
-            this.chartTime = new Setting<>(settingManager, "chartTime", new DateTime(2023, 11, 30, 11, 0));
+            this.chartTime = new Setting<>(settingManager, "chartTime", new DateTime(ct.getYear(), ct.getMonth(), 30, 9, 30));
         }
         this.chartFocusPrice = new Setting<>(settingManager, "chartFocusPrice", getStock().getClose(chartTime.get()));
         this.candleScale = new Setting<>(settingManager, "chartCandleScale", new VectorMod(1, 200));
@@ -139,13 +146,21 @@ public class ChartViewScene extends Scene {
         settingManager.loadAll();
 
         //Set Time for Non-Extended Hours
+        if (!StockUtil.shouldClose(chartTime.get(),stock.getTimeFrame())) {
+            chartTime.set(new DateTime(chartTime.get().getYear(),chartTime.get().getMonth(),chartTime.get().getDay(),9,30));
+            if (getStock().getTimeFrame().getSeconds() >= TimeFrame.ONE_HOUR.getSeconds() && getStock().getTimeFrame().getSeconds() < TimeFrame.ONE_DAY.getSeconds()) {
+                chartTime.set(new DateTime(chartTime.get().getYear(),chartTime.get().getMonth(),chartTime.get().getDay(),10,0));
+            }
+        }
+
         int loopCount = 0;
         DateTime adjustedTime = chartTime.get();
+
         while (!StockUtil.isPriceActive(getStock().isExtendedHours(), chartTime.get().getAdded(-loopCount * stock.getTimeFrame().getSeconds()))) { //This is mildly inefficient. Maybe rewrite it someday ¯\_(ツ)_/¯
-            adjustedTime = chartTime.get().getAdded(-loopCount * stock.getTimeFrame().getSeconds());
             loopCount++;
+            adjustedTime = chartTime.get().getAdded(-loopCount * stock.getTimeFrame().getSeconds());
         }
-        chartTime.set(adjustedTime.getAdded(-stock.getTimeFrame().getSeconds()));
+        chartTime.set(adjustedTime);
 
         //Set Default Values
         this.focusPricePre = chartFocusPrice.get();
@@ -164,11 +179,8 @@ public class ChartViewScene extends Scene {
         runStockUpdateThread();
     }
 
-
     @Override
     public void draw() {
-        //TODO: Daily candles have issues rendering
-
         //Draw Gradient Background
         new GradientRectangleUI(Vector.NULL, getSize(), new ColorE(0, 255, 255).alpha(20), new ColorE(0, 0, 0), GradientRectangleUI.Type.VERTICAL).draw();
 
@@ -236,7 +248,7 @@ public class ChartViewScene extends Scene {
 
     private void runStockUpdateThread() {
         Thread stockUpdateThread = new Thread(() -> {
-            while (true) {
+            while (getWindow().getScene().equals(this)) {
                 //getStock().updateLivePrice(.5f); //Updates every half second tend to cause an ip ban on error 403
                 getStock().updateLivePrice(1);
                 try {
@@ -347,8 +359,10 @@ public class ChartViewScene extends Scene {
         //Jump the time gap when the price is not active.
         // This has issues because of gap jumping requiring multiple update iterations to fully complete.
         // MAYBE instead of the below, check if the day is different, then add more to the correction value if so.
-        while (!StockUtil.isPriceActive(getStock().isExtendedHours(), chartTime.get().getAdded(-correction)))
+
+        while (!StockUtil.isPriceActive(getStock().isExtendedHours(), chartTime.get().getAdded(-correction))) {
             correction += sign * getStock().getTimeFrame().getSeconds();
+        }
 
         chartTime.set(chartTime.get().getAdded(-correction));
     }
@@ -398,7 +412,6 @@ public class ChartViewScene extends Scene {
                 modeMAColor.setPos(new Vector(startX, yVal + inc));
                 inc += 50;
                 sliderMAWidth.setPos(new Vector(startX, yVal + inc));
-
 
                 fieldMAPeriod.setEnabled(true);
                 modeMAType.setEnabled(true);

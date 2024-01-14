@@ -21,4 +21,21 @@ public class StockUtil {
         return isTradingHours(currentTime);
     }
 
+
+    public static boolean shouldClose(DateTime dateTime, TimeFrame timeFrame) {
+        return switch (timeFrame) {
+            case ONE_SECOND -> true;
+            case FIVE_SECONDS -> dateTime.getSecond() % 5 == 0;
+            case THIRTY_SECONDS -> dateTime.getSecond() % 30 == 0;
+            case ONE_MINUTE -> dateTime.getSecond() == 0;
+            case FIVE_MINUTES -> dateTime.getMinute() % 5 == 0 && dateTime.getSecond() == 0;
+            case FIFTEEN_MINUTES -> dateTime.getMinute() % 15 == 0 && dateTime.getSecond() == 0;
+            case THIRTY_MINUTES -> dateTime.getMinute() % 30 == 0 && dateTime.getSecond() == 0;
+            case ONE_HOUR -> dateTime.getHour() == 0 && dateTime.getMinute() == 0 && dateTime.getSecond() == 0;
+            case TWO_HOUR -> dateTime.getHour() % 2 == 0 && dateTime.getMinute() == 0 && dateTime.getSecond() == 0;
+            case FOUR_HOUR -> dateTime.getHour() % 4 == 0 && dateTime.getMinute() == 0 && dateTime.getSecond() == 0;
+            case ONE_DAY -> dateTime.getHour() % 8 == 0 && dateTime.getMinute() == 0 && dateTime.getSecond() == 0;
+        };
+    }
+
 }
