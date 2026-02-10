@@ -33,6 +33,17 @@ Indicators that were coded for this platofrm include:
 - SMA
 - MACD
 
+*Adding Indicators*
+- To add an indicator, go the top bar, click Indicators, and a selection menu will appear on the side to add your choice of indicator with applicable settings
+  
+![title](img/ema.gif)
+
+*Removing Indicators*
+- To remove an indicator, go to the indicator menu, hover over a name in the list, then click!
+
+![title](img/deleteindicators.gif)
+
+
 # File Storage
 Trade Companion plots stock data stored in stock_data/TICKER_TIMEFRAME.csv
 
