@@ -26,7 +26,7 @@ I was experimenting with displaying and calculating stock data... for fun ya kno
   - Clikc & Drag: Move the chart
 
 # Indicators
-![title](img/indicators.png)
+![title](img/Indicators.png)
 
 Indicators that were coded for this platofrm include:
 - EMA
