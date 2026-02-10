@@ -1,3 +1,8 @@
+# Trade Companion
+
+TradeCompanion is an *OLD and VERY MESSY* project of mine from college. I was experimenting with displaying and calculating stock data... for fun ya know...
+
+
 TODO: Add documentation for this code
 This might be my messiest repository... It's old and I was just experimenting while making it haha
 
